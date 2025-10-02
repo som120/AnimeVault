@@ -1,0 +1,29 @@
+{
+  "project_info": {
+    "project_number": "15283861993",
+    "project_id": "animevault-97456",
+    "storage_bucket": "animevault-97456.firebasestorage.app"
+  },
+  "client": [
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:15283861993:android:650d4f66f93b4c3b5b7378",
+        "android_client_info": {
+          "package_name": "com.example.animevault"
+        }
+      },
+      "oauth_client": [],
+      "api_key": [
+        {
+          "current_key": "AIzaSyBJ6wUedYCPYnHQF3bXCr-ZJFk1vutfBlg"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": []
+        }
+      }
+    }
+  ],
+  "configuration_version": "1"
+}

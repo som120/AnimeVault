@@ -1,4 +1,4 @@
-package com.example.ainme_vault
+package com.example.animevault
 
 import io.flutter.embedding.android.FlutterActivity
 
