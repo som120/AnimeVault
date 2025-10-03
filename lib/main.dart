@@ -1,8 +1,11 @@
 import 'package:flutter/material.dart';
-import 'screens/search_screen.dart'; // ✅ Correct import
-// You can also create home_screen.dart and profile_screen.dart if needed
+import 'screens/search_screen.dart';
+import 'package:firebase_core/firebase_core.dart';
+import 'firebase_options.dart';
 
-void main() {
+void main() async {
+  WidgetsFlutterBinding.ensureInitialized();
+  await Firebase.initializeApp(options: DefaultFirebaseOptions.currentPlatform);
   runApp(const AnimeVaultApp());
 }
 
@@ -17,8 +20,10 @@ class AnimeVaultApp extends StatelessWidget {
         primarySwatch: Colors.indigo,
         scaffoldBackgroundColor: Colors.grey[100],
       ),
-      home: const MainScreen(),
-      debugShowCheckedModeBanner: false,
+      home: Scaffold(
+        appBar: AppBar(title: const Text("Firebase Connected 🚀")),
+        body: const Center(child: Text("Hello Firebase!")),
+      ),
     );
   }
 }
