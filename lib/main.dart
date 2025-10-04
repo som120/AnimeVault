@@ -1,8 +1,16 @@
 import 'package:flutter/material.dart';
-import 'screens/search_screen.dart'; // ✅ Correct import
-// You can also create home_screen.dart and profile_screen.dart if needed
+import 'package:firebase_core/firebase_core.dart';
+import 'firebase_options.dart';
 
-void main() {
+// Screens
+import 'screens/home_screen.dart';
+import 'screens/search_screen.dart';
+import 'screens/profile_screen.dart'; // create if not yet done
+//import 'firestore_test_screen.dart';
+
+void main() async {
+  WidgetsFlutterBinding.ensureInitialized();
+  await Firebase.initializeApp(options: DefaultFirebaseOptions.currentPlatform);
   runApp(const AnimeVaultApp());
 }
 
@@ -18,7 +26,6 @@ class AnimeVaultApp extends StatelessWidget {
         scaffoldBackgroundColor: Colors.grey[100],
       ),
       home: const MainScreen(),
-      debugShowCheckedModeBanner: false,
     );
   }
 }
@@ -33,11 +40,11 @@ class MainScreen extends StatefulWidget {
 class _MainScreenState extends State<MainScreen> {
   int _currentIndex = 0;
 
-  // ✅ Screens used in bottom navigation
-  final List<Widget> _screens = [
-    const HomeScreen(),
-    const SearchScreen(),
-    const ProfileScreen(),
+  // Screens used in bottom navigation
+  final List<Widget> _screens = const [
+    HomeScreen(),
+    SearchScreen(),
+    ProfileScreen(), // you can create a real ProfileScreen in screens/profile_screen.dart
   ];
 
   @override
@@ -54,36 +61,6 @@ class _MainScreenState extends State<MainScreen> {
           BottomNavigationBarItem(icon: Icon(Icons.search), label: 'Search'),
           BottomNavigationBarItem(icon: Icon(Icons.person), label: 'Profile'),
         ],
-      ),
-    );
-  }
-}
-
-// ------------------- Placeholder Screens -------------------
-
-class HomeScreen extends StatelessWidget {
-  const HomeScreen({super.key});
-
-  @override
-  Widget build(BuildContext context) {
-    return const Center(
-      child: Text(
-        'Home Screen',
-        style: TextStyle(fontSize: 24, fontWeight: FontWeight.bold),
-      ),
-    );
-  }
-}
-
-class ProfileScreen extends StatelessWidget {
-  const ProfileScreen({super.key});
-
-  @override
-  Widget build(BuildContext context) {
-    return const Center(
-      child: Text(
-        'Profile Screen',
-        style: TextStyle(fontSize: 24, fontWeight: FontWeight.bold),
       ),
     );
   }
