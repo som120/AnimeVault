@@ -10,52 +10,210 @@ class SearchScreen extends StatefulWidget {
 }
 
 class _SearchScreenState extends State<SearchScreen> {
+  final TextEditingController _controller = TextEditingController();
   List animeList = [];
   bool isLoading = false;
-  final TextEditingController _controller = TextEditingController();
 
-  // Search Anime
+  String selectedFilter = "Top 100";
+
+  @override
+  void initState() {
+    super.initState();
+    fetchTopAnime(); // default
+  }
+
+  // ------------------ CATEGORY FUNCTIONS ------------------
+
+  void fetchTopAnime() async {
+    setState(() {
+      isLoading = true;
+      selectedFilter = "Top 100";
+    });
+    animeList = await AniListService.getTopAnime();
+    setState(() => isLoading = false);
+  }
+
+  void fetchPopular() async {
+    setState(() {
+      isLoading = true;
+      selectedFilter = "Popular";
+    });
+    animeList = await AniListService.getPopularAnime();
+    setState(() => isLoading = false);
+  }
+
+  void fetchUpcoming() async {
+    setState(() {
+      isLoading = true;
+      selectedFilter = "Upcoming";
+    });
+    animeList = await AniListService.getUpcomingAnime();
+    setState(() => isLoading = false);
+  }
+
+  void fetchAiring() async {
+    setState(() {
+      isLoading = true;
+      selectedFilter = "Airing";
+    });
+    animeList = await AniListService.getAiringAnime();
+    setState(() => isLoading = false);
+  }
+
+  void fetchMovies() async {
+    setState(() {
+      isLoading = true;
+      selectedFilter = "Movies";
+    });
+    animeList = await AniListService.getTopMovies();
+    setState(() => isLoading = false);
+  }
+
+  // ------------------ SEARCH FUNCTION ------------------
   void searchAnime() async {
-    final query = _controller.text.trim();
-    if (query.isEmpty) return;
+    final text = _controller.text.trim();
+    if (text.isEmpty) return;
 
     setState(() {
       isLoading = true;
-      animeList = [];
+      selectedFilter = "Search";
     });
 
-    final results = await AniListService.searchAnime(query);
-
-    setState(() {
-      animeList = results;
-      isLoading = false;
-    });
+    animeList = await AniListService.searchAnime(text);
+    setState(() => isLoading = false);
   }
 
-  // Helper to build genre chips
-  Widget buildGenres(List<dynamic> genres) {
-    return Wrap(
-      spacing: 6.0,
-      runSpacing: 4.0,
-      children: genres.map<Widget>((genre) {
-        return Chip(label: Text(genre), backgroundColor: Colors.blue.shade100);
-      }).toList(),
+  // ------------------ UI BUTTON WIDGET ------------------
+
+  Widget buildFilterButton(String label, Function onTap) {
+    final bool active = selectedFilter == label;
+
+    return Padding(
+      padding: const EdgeInsets.symmetric(horizontal: 6),
+      child: GestureDetector(
+        onTap: () => onTap(),
+        child: Container(
+          padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 8),
+          decoration: BoxDecoration(
+            color: active ? Colors.indigo : Colors.grey[300],
+            borderRadius: BorderRadius.circular(25),
+          ),
+          child: Text(
+            label,
+            style: TextStyle(
+              color: active ? Colors.white : Colors.black87,
+              fontWeight: FontWeight.w600,
+            ),
+          ),
+        ),
+      ),
     );
   }
+
+  Widget buildAnimeCard(anime) {
+    final imageUrl =
+        anime['coverImage']?['medium'] ?? anime['coverImage']?['large'];
+
+    final title =
+        anime['title']?['romaji'] ?? anime['title']?['english'] ?? 'Unknown';
+
+    final score = anime['averageScore']?.toString() ?? 'N/A';
+    final year = anime['startDate']?['year']?.toString() ?? '—';
+
+    return Container(
+      margin: const EdgeInsets.symmetric(vertical: 6),
+      padding: const EdgeInsets.all(10),
+      decoration: BoxDecoration(
+        color: Colors.white,
+        borderRadius: BorderRadius.circular(14),
+        boxShadow: [
+          BoxShadow(
+            color: Colors.black.withOpacity(0.05),
+            blurRadius: 8,
+            offset: const Offset(0, 3),
+          ),
+        ],
+      ),
+      child: Row(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          // Poster image
+          ClipRRect(
+            borderRadius: BorderRadius.circular(10),
+            child: Image.network(
+              imageUrl,
+              width: 60,
+              height: 85,
+              fit: BoxFit.cover,
+            ),
+          ),
+
+          const SizedBox(width: 12),
+
+          // Text
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  title,
+                  maxLines: 2,
+                  overflow: TextOverflow.ellipsis,
+                  style: const TextStyle(
+                    fontSize: 16,
+                    fontWeight: FontWeight.w600,
+                    color: Colors.black87,
+                  ),
+                ),
+                const SizedBox(height: 6),
+
+                // score + year
+                Row(
+                  children: [
+                    const Icon(Icons.star, size: 18, color: Colors.amber),
+                    const SizedBox(width: 4),
+                    Text(
+                      score,
+                      style: const TextStyle(
+                        fontSize: 14,
+                        fontWeight: FontWeight.w500,
+                        color: Colors.black87,
+                      ),
+                    ),
+                    const SizedBox(width: 12),
+                    Text(
+                      "•  $year",
+                      style: const TextStyle(
+                        fontSize: 14,
+                        color: Colors.black54,
+                      ),
+                    ),
+                  ],
+                ),
+              ],
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  // ------------------ BUILD ------------------
 
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      appBar: AppBar(title: const Text('Search Anime')),
+      appBar: AppBar(elevation: 0, backgroundColor: Colors.grey[100]),
+
       body: Padding(
-        padding: const EdgeInsets.all(12.0),
+        padding: const EdgeInsets.all(12),
         child: Column(
           children: [
-            // Search input
+            // Search bar
             TextField(
               controller: _controller,
               decoration: InputDecoration(
-                hintText: 'Enter anime name...',
+                hintText: 'Search anime...',
                 border: OutlineInputBorder(
                   borderRadius: BorderRadius.circular(10),
                 ),
@@ -66,92 +224,54 @@ class _SearchScreenState extends State<SearchScreen> {
               ),
               onSubmitted: (_) => searchAnime(),
             ),
-            const SizedBox(height: 12),
-            // Loading indicator
-            if (isLoading)
-              const Expanded(child: Center(child: CircularProgressIndicator()))
-            else
-              // Search results list
-              Expanded(
-                child: ListView.builder(
-                  itemCount: animeList.length,
-                  itemBuilder: (context, index) {
-                    final anime = animeList[index];
 
-                    // Safely extract title
-                    final title =
-                        anime['title']?['romaji'] ??
-                        anime['title']?['english'] ??
-                        'Unknown';
+            const SizedBox(height: 10),
 
-                    // Safely extract episodes
-                    final episodes = anime['episodes']?.toString() ?? 'N/A';
-
-                    // Safely extract release year
-                    final startDate =
-                        anime['startDate'] != null &&
-                            anime['startDate']['year'] != null
-                        ? anime['startDate']['year'].toString()
-                        : 'N/A';
-
-                    return Card(
-                      margin: const EdgeInsets.symmetric(vertical: 6),
-                      child: InkWell(
-                        onTap: () {
-                          Navigator.push(
-                            context,
-                            MaterialPageRoute(
-                              builder: (context) =>
-                                  AnimeDetailScreen(anime: anime),
-                            ),
-                          );
-                        },
-                        child: Padding(
-                          padding: const EdgeInsets.all(8.0),
-                          child: Row(
-                            crossAxisAlignment: CrossAxisAlignment.start,
-                            children: [
-                              // Cover Image on the left (safe check)
-                              anime['coverImage']?['medium'] != null
-                                  ? Image.network(
-                                      anime['coverImage']['medium'],
-                                      width: 80,
-                                      height: 120,
-                                      fit: BoxFit.cover,
-                                    )
-                                  : SizedBox(width: 80, height: 120),
-                              const SizedBox(width: 12),
-                              // Details on the right
-                              Expanded(
-                                child: Column(
-                                  crossAxisAlignment: CrossAxisAlignment.start,
-                                  children: [
-                                    Text(
-                                      title,
-                                      style: const TextStyle(
-                                        fontSize: 16,
-                                        fontWeight: FontWeight.bold,
-                                      ),
-                                    ),
-                                    const SizedBox(height: 6),
-                                    Row(
-                                      children: [
-                                        Text('Episodes: $episodes'),
-                                        const SizedBox(width: 16),
-                                        Text('Year: $startDate'),
-                                      ],
-                                    ),
-                                  ],
-                                ),
-                              ),
-                            ],
-                          ),
-                        ),
-                      ),
-                    );
-                  },
+            // ------------------ Filter Buttons Row ------------------
+            SizedBox(
+              height: 40,
+              child: SingleChildScrollView(
+                scrollDirection: Axis.horizontal,
+                child: Row(
+                  children: [
+                    buildFilterButton("Top 100", fetchTopAnime),
+                    buildFilterButton("Popular", fetchPopular),
+                    buildFilterButton("Upcoming", fetchUpcoming),
+                    buildFilterButton("Airing", fetchAiring),
+                    buildFilterButton("Movies", fetchMovies),
+                  ],
                 ),
               ),
+            ),
+
+            const SizedBox(height: 10),
+
+            // ------------------ Anime List ------------------
+            Expanded(
+              child: isLoading
+                  ? const Center(child: CircularProgressIndicator())
+                  : ListView.builder(
+                      itemCount: animeList.length,
+                      itemBuilder: (context, index) {
+                        final anime = animeList[index];
+
+                        return GestureDetector(
+                          onTap: () {
+                            Navigator.push(
+                              context,
+                              MaterialPageRoute(
+                                builder: (context) =>
+                                    AnimeDetailScreen(anime: anime),
+                              ),
+                            );
+                          },
+                          child: buildAnimeCard(
+                            anime,
+                          ), // ⭐ use the new modern UI card
+                        );
+                      },
+                    ),
+            ),
           ],
         ),
       ),

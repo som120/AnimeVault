@@ -44,7 +44,7 @@ class _MainScreenState extends State<MainScreen> {
   final List<Widget> _screens = const [
     HomeScreen(),
     SearchScreen(),
-    ProfileScreen(), // you can create a real ProfileScreen in screens/profile_screen.dart
+    ProfileScreen(),
   ];
 
   @override
