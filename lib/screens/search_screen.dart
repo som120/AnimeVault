@@ -110,7 +110,7 @@ class _SearchScreenState extends State<SearchScreen> {
     );
   }
 
-  Widget buildAnimeCard(anime) {
+  Widget buildAnimeCard(anime, int? rank) {
     final imageUrl =
         anime['coverImage']?['medium'] ?? anime['coverImage']?['large'];
 
@@ -120,81 +120,95 @@ class _SearchScreenState extends State<SearchScreen> {
     final score = anime['averageScore']?.toString() ?? 'N/A';
     final year = anime['startDate']?['year']?.toString() ?? '—';
 
-    return Container(
-      margin: const EdgeInsets.symmetric(vertical: 6),
-      padding: const EdgeInsets.all(10),
-      decoration: BoxDecoration(
-        color: Colors.white,
-        borderRadius: BorderRadius.circular(14),
-        boxShadow: [
-          BoxShadow(
-            color: Colors.black.withOpacity(0.05),
-            blurRadius: 8,
-            offset: const Offset(0, 3),
+    return Stack(
+      clipBehavior: Clip.none,
+      children: [
+        // MAIN CARD
+        Container(
+          margin: const EdgeInsets.symmetric(vertical: 6),
+          padding: const EdgeInsets.all(10),
+          decoration: BoxDecoration(
+            color: Colors.white,
+            borderRadius: BorderRadius.circular(14),
+            boxShadow: [
+              BoxShadow(
+                color: Colors.black.withOpacity(0.05),
+                blurRadius: 8,
+                offset: const Offset(0, 3),
+              ),
+            ],
           ),
-        ],
-      ),
-      child: Row(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          // Poster image
-          ClipRRect(
-            borderRadius: BorderRadius.circular(10),
-            child: Image.network(
-              imageUrl,
-              width: 60,
-              height: 85,
-              fit: BoxFit.cover,
-            ),
-          ),
-
-          const SizedBox(width: 12),
-
-          // Text
-          Expanded(
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Text(
-                  title,
-                  maxLines: 2,
-                  overflow: TextOverflow.ellipsis,
-                  style: const TextStyle(
-                    fontSize: 16,
-                    fontWeight: FontWeight.w600,
-                    color: Colors.black87,
-                  ),
+          child: Row(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              ClipRRect(
+                borderRadius: BorderRadius.circular(10),
+                child: Image.network(
+                  imageUrl,
+                  width: 60,
+                  height: 85,
+                  fit: BoxFit.cover,
                 ),
-                const SizedBox(height: 6),
+              ),
+              const SizedBox(width: 12),
 
-                // score + year
-                Row(
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    const Icon(Icons.star, size: 18, color: Colors.amber),
-                    const SizedBox(width: 4),
                     Text(
-                      score,
+                      title,
+                      maxLines: 2,
+                      overflow: TextOverflow.ellipsis,
                       style: const TextStyle(
-                        fontSize: 14,
-                        fontWeight: FontWeight.w500,
-                        color: Colors.black87,
+                        fontSize: 16,
+                        fontWeight: FontWeight.w600,
                       ),
                     ),
-                    const SizedBox(width: 12),
-                    Text(
-                      "•  $year",
-                      style: const TextStyle(
-                        fontSize: 14,
-                        color: Colors.black54,
-                      ),
+                    const SizedBox(height: 6),
+                    Row(
+                      children: [
+                        const Icon(Icons.star, size: 18, color: Colors.amber),
+                        const SizedBox(width: 4),
+                        Text(score),
+                        const SizedBox(width: 12),
+                        Text("• $year"),
+                      ],
                     ),
                   ],
                 ),
-              ],
+              ),
+            ],
+          ),
+        ),
+
+        // ⭐ RANK BADGE (only visible if rank != null)
+        if (rank != null)
+          Positioned(
+            top: -6,
+            left: -6,
+            child: Container(
+              padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
+              decoration: BoxDecoration(
+                color: rank == 1
+                    ? Colors.amber[700] // gold
+                    : rank == 2
+                    ? Colors.grey[400] // silver
+                    : rank == 3
+                    ? Colors.brown[300] // bronze
+                    : Colors.indigo, // other ranks
+                borderRadius: BorderRadius.circular(8),
+              ),
+              child: Text(
+                "#$rank",
+                style: const TextStyle(
+                  color: Colors.white,
+                  fontWeight: FontWeight.bold,
+                ),
+              ),
             ),
           ),
-        ],
-      ),
+      ],
     );
   }
 
@@ -267,7 +281,8 @@ class _SearchScreenState extends State<SearchScreen> {
                           },
                           child: buildAnimeCard(
                             anime,
-                          ), // ⭐ use the new modern UI card
+                            selectedFilter == "Top 100" ? index + 1 : null,
+                          ),
                         );
                       },
                     ),
