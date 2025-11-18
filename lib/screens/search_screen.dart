@@ -213,7 +213,7 @@ class _SearchScreenState extends State<SearchScreen> {
             TextField(
               controller: _controller,
               decoration: InputDecoration(
-                hintText: 'Search anime...',
+                hintText: 'Search anime..',
                 border: OutlineInputBorder(
                   borderRadius: BorderRadius.circular(10),
                 ),
