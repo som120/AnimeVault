@@ -11,118 +11,92 @@ class AniListService {
     );
   }
 
-  // ---------------- SEARCH ----------------
+  // ---------------- QUERY CONSTANTS ----------------
   static const String searchQuery = r'''
     query ($search: String) {
       Page(perPage: 20) {
         media(search: $search, type: ANIME) {
           id
-          title {
-            romaji
-            english
-          }
+          title { romaji english }
           episodes
           averageScore
           startDate { year }
-          coverImage {
-            large
-            medium
-          }
+          coverImage { large medium }
         }
       }
     }
   ''';
 
-  // ---------------- TOP 100 ----------------
   static const String topAnimeQuery = r'''
     query {
-      Page(perPage: 20) {
-        media(type: ANIME, sort: SCORE_DESC) {
+      Page(perPage: 100) {
+        media(sort: SCORE_DESC, type: ANIME) {
           id
-          title {
-            romaji
-            english
-          }
+          title { romaji english }
           episodes
           averageScore
           startDate { year }
-          coverImage { large medium }
+          coverImage { medium large }
         }
       }
     }
   ''';
 
-  // ---------------- POPULAR ----------------
   static const String popularAnimeQuery = r'''
     query {
-      Page(perPage: 20) {
-        media(type: ANIME, sort: POPULARITY_DESC) {
+      Page(perPage: 100) {
+        media(sort: POPULARITY_DESC, type: ANIME) {
           id
-          title {
-            romaji
-            english
-          }
+          title { romaji english }
           episodes
           averageScore
           startDate { year }
-          coverImage { large medium }
+          coverImage { medium large }
         }
       }
     }
   ''';
 
-  // ---------------- UPCOMING ----------------
   static const String upcomingAnimeQuery = r'''
     query {
-      Page(perPage: 20) {
-        media(type: ANIME, status: NOT_YET_RELEASED, sort: START_DATE) {
+      Page(perPage: 100) {
+        media(sort: POPULARITY_DESC, type: ANIME, status: NOT_YET_RELEASED) {
           id
-          title {
-            romaji
-            english
-          }
+          title { romaji english }
           episodes
           averageScore
           startDate { year }
-          coverImage { large medium }
+          coverImage { medium large }
         }
       }
     }
   ''';
 
-  // ---------------- AIRING ----------------
   static const String airingAnimeQuery = r'''
     query {
-      Page(perPage: 20) {
-        media(type: ANIME, status: RELEASING, sort: TRENDING_DESC) {
+      Page(perPage: 100) {
+        media(sort: TRENDING_DESC, type: ANIME, status: RELEASING) {
           id
-          title {
-            romaji
-            english
-          }
+          title { romaji english }
           episodes
           averageScore
           startDate { year }
-          coverImage { large medium }
+          coverImage { medium large }
         }
       }
     }
   ''';
 
-  // ---------------- TOP MOVIES ----------------
   static const String topMoviesQuery = r'''
     query {
-      Page(perPage: 20) {
-        media(type: ANIME, format: MOVIE, sort: SCORE_DESC) {
+      Page(perPage: 100) {
+        media(sort: SCORE_DESC, type: ANIME, format: MOVIE) {
           id
-          title {
-            romaji
-            english
-          }
+          title { romaji english }
           episodes
           averageScore
           startDate { year }
-          coverImage { large medium }
+          coverImage { medium large }
         }
       }
     }
@@ -136,22 +110,27 @@ class AniListService {
     final options = QueryOptions(
       document: gql(query),
       variables: variables ?? {},
+      fetchPolicy: FetchPolicy.networkOnly,
     );
 
     final result = await client().query(options);
 
     if (result.hasException) {
-      debugPrint("🔥 AniList Error: ${result.exception}");
+      debugPrint('AniList API Error: ${result.exception}');
       return [];
     }
 
-    return result.data?['Page']?['media'] ?? [];
+    // safe access with null checks
+    final page = result.data?['Page'];
+    if (page == null) return [];
+    final media = page['media'];
+    if (media == null) return [];
+    return List.from(media);
   }
 
   // ------------ PUBLIC FUNCTIONS ------------
-
   static Future<List> searchAnime(String name) async =>
-      _fetch(searchQuery, variables: {"search": name});
+      _fetch(searchQuery, variables: {'search': name});
 
   static Future<List> getTopAnime() async => _fetch(topAnimeQuery);
 
