@@ -22,7 +22,7 @@ class AnimeVaultApp extends StatelessWidget {
     return MaterialApp(
       title: 'AnimeVault',
       theme: ThemeData(
-        primarySwatch:  Colors.indigo,
+        primarySwatch: Colors.indigo,
         scaffoldBackgroundColor: Colors.grey[100],
       ),
       home: const MainScreen(),
