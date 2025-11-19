@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import '../theme/app_theme.dart';
 
 class AnimeDetailScreen extends StatelessWidget {
   final Map<String, dynamic> anime;
@@ -58,19 +59,6 @@ class AnimeDetailScreen extends StatelessWidget {
                     begin: Alignment.topCenter,
                     end: Alignment.bottomCenter,
                   ),
-                ),
-              ),
-            ),
-
-            // ⬅ BACK BUTTON
-            Positioned(
-              top: 50,
-              left: 16,
-              child: CircleAvatar(
-                backgroundColor: Colors.white.withOpacity(0.25),
-                child: IconButton(
-                  icon: const Icon(Icons.arrow_back, color: Colors.white),
-                  onPressed: () => Navigator.pop(context),
                 ),
               ),
             ),
@@ -215,12 +203,32 @@ class AnimeDetailScreen extends StatelessWidget {
   Widget build(BuildContext context) {
     return Scaffold(
       backgroundColor: Colors.white,
+      extendBodyBehindAppBar: true,
+      appBar: AppBar(
+        backgroundColor: Colors.transparent,
+        elevation: 0,
+        // keep the button circular like your design
+        leading: Padding(
+          padding: const EdgeInsets.only(left: 8.0, top: 8),
+          child: CircleAvatar(
+            backgroundColor: AppTheme.accent,
+            child: IconButton(
+              icon: const Icon(Icons.arrow_back, color: Colors.white),
+              onPressed: () => Navigator.pop(context),
+            ),
+          ),
+        ),
+      ),
       body: SingleChildScrollView(
         child: Column(
           children: [
+            // Add a small top spacer so content doesn't get hidden under status bar on smaller devices
+            // (banner is behind appbar intentionally for the visual effect)
+            const SizedBox(height: 8),
             buildTopSection(context, anime), // ⭐ Top purple section
             buildGenres(anime), // optional
             buildDescription(anime), // optional
+            const SizedBox(height: 32), // bottom padding
           ],
         ),
       ),
