@@ -102,7 +102,9 @@ class _MainScreenState extends State<MainScreen> {
       body: Stack(
         children: [
           // Main Screens
-          Positioned.fill(child: _screens[_currentIndex]),
+          Positioned.fill(
+            child: IndexedStack(index: _currentIndex, children: _screens),
+          ),
 
           // Bottom progressive fade blur
           Positioned(

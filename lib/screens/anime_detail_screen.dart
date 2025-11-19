@@ -1,5 +1,6 @@
 import 'package:ainme_vault/theme/app_theme.dart';
 import 'package:flutter/material.dart';
+import 'dart:ui';
 
 class AnimeDetailScreen extends StatelessWidget {
   final Map<String, dynamic> anime;
@@ -28,37 +29,26 @@ class AnimeDetailScreen extends StatelessWidget {
                 bottomLeft: Radius.circular(35),
                 bottomRight: Radius.circular(35),
               ),
-              child: Container(
+              child: SizedBox(
                 height: 260,
                 width: double.infinity,
-                decoration: BoxDecoration(
-                  image: DecorationImage(
-                    image: NetworkImage(banner),
-                    fit: BoxFit.cover,
-                  ),
-                ),
-              ),
-            ),
-
-            // 🌫 GRADIENT OVERLAY
-            ClipRRect(
-              borderRadius: const BorderRadius.only(
-                bottomLeft: Radius.circular(35),
-                bottomRight: Radius.circular(35),
-              ),
-              child: Container(
-                height: 260,
-                decoration: BoxDecoration(
-                  gradient: LinearGradient(
-                    colors: [
-                      Colors.black.withOpacity(0.1),
-                      Colors.black.withOpacity(0.3),
-                      Colors.black.withOpacity(0.6),
-                      Colors.black.withOpacity(0.9),
-                    ],
-                    begin: Alignment.topCenter,
-                    end: Alignment.bottomCenter,
-                  ),
+                child: Stack(
+                  fit: StackFit.expand,
+                  children: [
+                    Container(
+                      decoration: BoxDecoration(
+                        image: DecorationImage(
+                          image: NetworkImage(banner),
+                          fit: BoxFit.cover,
+                        ),
+                      ),
+                    ),
+                    // Blur Effect
+                    BackdropFilter(
+                      filter: ImageFilter.blur(sigmaX: 4, sigmaY: 4),
+                      child: Container(color: Colors.black.withOpacity(0.2)),
+                    ),
+                  ],
                 ),
               ),
             ),
