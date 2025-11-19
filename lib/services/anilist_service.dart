@@ -18,6 +18,7 @@ class AniListService {
         media(search: $search, type: ANIME) {
           id
           title { romaji english }
+          format
           episodes
           averageScore
           startDate { year }
@@ -33,6 +34,7 @@ class AniListService {
         media(sort: SCORE_DESC, type: ANIME) {
           id
           title { romaji english }
+          format
           episodes
           averageScore
           startDate { year }
@@ -48,6 +50,7 @@ class AniListService {
         media(sort: POPULARITY_DESC, type: ANIME) {
           id
           title { romaji english }
+          format
           episodes
           averageScore
           startDate { year }
@@ -63,6 +66,7 @@ class AniListService {
         media(sort: POPULARITY_DESC, type: ANIME, status: NOT_YET_RELEASED) {
           id
           title { romaji english }
+          format
           episodes
           averageScore
           startDate { year }
@@ -78,6 +82,7 @@ class AniListService {
         media(sort: TRENDING_DESC, type: ANIME, status: RELEASING) {
           id
           title { romaji english }
+          format
           episodes
           averageScore
           startDate { year }
@@ -93,6 +98,7 @@ class AniListService {
         media(sort: SCORE_DESC, type: ANIME, format: MOVIE) {
           id
           title { romaji english }
+          format
           episodes
           averageScore
           startDate { year }
