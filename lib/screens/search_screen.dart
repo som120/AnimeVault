@@ -14,6 +14,7 @@ class _SearchScreenState extends State<SearchScreen> {
   final TextEditingController _controller = TextEditingController();
   List animeList = [];
   bool isLoading = false;
+  bool isFocused = false;
 
   String selectedFilter = "Top 100";
 
@@ -282,6 +283,68 @@ class _SearchScreenState extends State<SearchScreen> {
     );
   }
 
+  Widget buildAnimatedSearchBar() {
+    return AnimatedContainer(
+      duration: const Duration(milliseconds: 280),
+      curve: Curves.easeOut,
+      padding: const EdgeInsets.symmetric(horizontal: 18, vertical: 4),
+      decoration: BoxDecoration(
+        color: isFocused ? Colors.white : const Color(0xFFFFFFFF),
+        borderRadius: BorderRadius.circular(isFocused ? 30 : 24),
+        boxShadow: [
+          if (isFocused)
+            BoxShadow(
+              color: Colors.black.withOpacity(0.12),
+              blurRadius: 14,
+              offset: const Offset(0, 6),
+            ),
+        ],
+      ),
+      child: Row(
+        children: [
+          // 🔍 Icon
+          Icon(
+            Icons.search,
+            size: 24,
+            color: isFocused ? const Color(0xFF714FDC) : Colors.grey[500],
+          ),
+
+          const SizedBox(width: 12),
+
+          // ✏ Text Input
+          Expanded(
+            child: FocusScope(
+              child: Focus(
+                onFocusChange: (hasFocus) {
+                  setState(() => isFocused = hasFocus);
+                },
+                child: TextField(
+                  controller: _controller,
+                  onSubmitted: (_) => searchAnime(),
+                  decoration: const InputDecoration(
+                    hintText: "Search anime...",
+                    hintStyle: TextStyle(color: Colors.grey, fontSize: 16),
+                    border: InputBorder.none,
+                  ),
+                ),
+              ),
+            ),
+          ),
+
+          // ❌ Clear button
+          if (_controller.text.isNotEmpty)
+            GestureDetector(
+              onTap: () {
+                _controller.clear();
+                setState(() {});
+              },
+              child: const Icon(Icons.close, size: 20, color: Colors.grey),
+            ),
+        ],
+      ),
+    );
+  }
+
   // ------------------ BUILD ------------------
 
   @override
@@ -306,22 +369,8 @@ class _SearchScreenState extends State<SearchScreen> {
         padding: const EdgeInsets.all(12),
         child: Column(
           children: [
-            // Search bar
-            TextField(
-              controller: _controller,
-              decoration: InputDecoration(
-                hintText: 'Search anime...',
-                border: OutlineInputBorder(
-                  borderRadius: BorderRadius.circular(10),
-                ),
-                suffixIcon: IconButton(
-                  icon: const Icon(Icons.search),
-                  onPressed: searchAnime,
-                ),
-              ),
-              onSubmitted: (_) => searchAnime(),
-            ),
-
+            // ------------------------Search bar----------------------
+            buildAnimatedSearchBar(),
             const SizedBox(height: 10),
 
             // ------------------ Filter Buttons Row ------------------
