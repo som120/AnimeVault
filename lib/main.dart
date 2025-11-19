@@ -60,7 +60,7 @@ class _MainScreenState extends State<MainScreen> {
           onTap: () => setState(() => _currentIndex = index),
           child: AnimatedContainer(
             duration: const Duration(milliseconds: 250),
-            padding: const EdgeInsets.symmetric(horizontal: 30, vertical: 8),
+            padding: const EdgeInsets.symmetric(horizontal: 34, vertical: 8),
             decoration: BoxDecoration(
               borderRadius: BorderRadius.circular(30),
               color: active
@@ -72,7 +72,7 @@ class _MainScreenState extends State<MainScreen> {
               children: [
                 Icon(
                   icon,
-                  size: active ? 30 : 24,
+                  size: active ? 22 : 24,
                   color: active ? const Color(0xFF714FDC) : Colors.white,
                 ),
                 if (active) ...[
