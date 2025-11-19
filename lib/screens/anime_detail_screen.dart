@@ -5,56 +5,222 @@ class AnimeDetailScreen extends StatelessWidget {
 
   const AnimeDetailScreen({super.key, required this.anime});
 
+  Widget buildTopSection(BuildContext context, Map<String, dynamic> anime) {
+    final poster = anime['coverImage']?['large'];
+    final banner = anime['bannerImage'] ?? poster;
+    final title = anime['title']?['romaji'] ?? "Unknown";
+    final subtitle = anime['title']?['english'] ?? "";
+
+    final format = anime['format'] ?? "TV";
+    final status = anime['status']?.replaceAll("_", " ") ?? "N/A";
+    final episodes = anime['episodes']?.toString() ?? "N/A";
+    final year = anime['startDate']?['year']?.toString() ?? "----";
+
+    return Column(
+      children: [
+        Stack(
+          clipBehavior: Clip.none,
+          children: [
+            // 🌈 BANNER
+            ClipRRect(
+              borderRadius: const BorderRadius.only(
+                bottomLeft: Radius.circular(35),
+                bottomRight: Radius.circular(35),
+              ),
+              child: Container(
+                height: 260,
+                width: double.infinity,
+                decoration: BoxDecoration(
+                  image: DecorationImage(
+                    image: NetworkImage(banner),
+                    fit: BoxFit.cover,
+                  ),
+                ),
+              ),
+            ),
+
+            // 🌫 GRADIENT OVERLAY
+            ClipRRect(
+              borderRadius: const BorderRadius.only(
+                bottomLeft: Radius.circular(35),
+                bottomRight: Radius.circular(35),
+              ),
+              child: Container(
+                height: 260,
+                decoration: BoxDecoration(
+                  gradient: LinearGradient(
+                    colors: [
+                      Colors.black.withOpacity(0.1),
+                      Colors.black.withOpacity(0.3),
+                      Colors.black.withOpacity(0.6),
+                      Colors.black.withOpacity(0.9),
+                    ],
+                    begin: Alignment.topCenter,
+                    end: Alignment.bottomCenter,
+                  ),
+                ),
+              ),
+            ),
+
+            // ⬅ BACK BUTTON
+            Positioned(
+              top: 50,
+              left: 16,
+              child: CircleAvatar(
+                backgroundColor: Colors.white.withOpacity(0.25),
+                child: IconButton(
+                  icon: const Icon(Icons.arrow_back, color: Colors.white),
+                  onPressed: () => Navigator.pop(context),
+                ),
+              ),
+            ),
+
+            // ⭐ POSTER OVERLAP
+            Positioned(
+              bottom: -170,
+              left: 0,
+              right: 0,
+              child: Center(
+                child: Container(
+                  decoration: BoxDecoration(
+                    borderRadius: BorderRadius.circular(16),
+                    boxShadow: [
+                      BoxShadow(
+                        color: Colors.black.withOpacity(0.25),
+                        blurRadius: 20,
+                        offset: const Offset(0, 10),
+                      ),
+                    ],
+                  ),
+                  child: ClipRRect(
+                    borderRadius: BorderRadius.circular(16),
+                    child: Image.network(
+                      poster,
+                      height: 300,
+                      width: 210,
+                      fit: BoxFit.cover,
+                    ),
+                  ),
+                ),
+              ),
+            ),
+          ],
+        ),
+
+        // Enough space for the poster to overlap
+        const SizedBox(height: 180),
+
+        // ⭐ TITLE
+        Text(
+          title,
+          textAlign: TextAlign.center,
+          style: const TextStyle(fontSize: 24, fontWeight: FontWeight.bold),
+        ),
+
+        if (subtitle.isNotEmpty)
+          Padding(
+            padding: const EdgeInsets.only(top: 4.0),
+            child: Text(
+              subtitle,
+              textAlign: TextAlign.center,
+              style: TextStyle(fontSize: 16, color: Colors.grey.shade600),
+            ),
+          ),
+
+        const SizedBox(height: 20),
+
+        Padding(
+          padding: const EdgeInsets.symmetric(horizontal: 16.0),
+          child: Row(
+            mainAxisAlignment: MainAxisAlignment.spaceBetween,
+            children: [
+              buildInfoBox("Format", format),
+              buildInfoBox("Status", status),
+              buildInfoBox("Episodes", episodes),
+              buildInfoBox("Year", year),
+            ],
+          ),
+        ),
+
+        const SizedBox(height: 16),
+      ],
+    );
+  }
+
+  // Reusable small info box
+  Widget buildInfoBox(String label, String value) {
+    return Column(
+      children: [
+        Text(
+          label,
+          style: const TextStyle(
+            fontSize: 12,
+            color: Colors.grey,
+            fontWeight: FontWeight.w500,
+          ),
+        ),
+        const SizedBox(height: 4),
+        Text(
+          value,
+          style: const TextStyle(fontSize: 14, fontWeight: FontWeight.bold),
+        ),
+      ],
+    );
+  }
+
+  Widget buildGenres(Map<String, dynamic> anime) {
+    final genres = anime['genres'] ?? [];
+
+    if (genres.isEmpty) return const SizedBox.shrink();
+
+    return Padding(
+      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
+      child: Wrap(
+        spacing: 8,
+        runSpacing: 8,
+        children: genres.map<Widget>((genre) {
+          return Chip(
+            label: Text(genre),
+            backgroundColor: const Color(0xFFEDE7FF),
+            labelStyle: const TextStyle(fontWeight: FontWeight.w600),
+          );
+        }).toList(),
+      ),
+    );
+  }
+
+  Widget buildDescription(Map<String, dynamic> anime) {
+    final description = anime['description'] ?? "No description available.";
+
+    return Padding(
+      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          const Text(
+            "Description",
+            style: TextStyle(fontSize: 20, fontWeight: FontWeight.bold),
+          ),
+          const SizedBox(height: 8),
+          Text(
+            description.replaceAll(RegExp(r'<[^>]*>'), ''), // Remove HTML tags
+            style: TextStyle(fontSize: 16, color: Colors.grey.shade800),
+          ),
+        ],
+      ),
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      appBar: AppBar(title: Text(anime['title']?['romaji'] ?? 'Anime Detail')),
+      backgroundColor: Colors.white,
       body: SingleChildScrollView(
-        padding: const EdgeInsets.all(16.0),
         child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            // Cover Image
-            if (anime['coverImage'] != null)
-              Center(
-                child: Image.network(
-                  anime['coverImage']['large'],
-                  height: 250,
-                  fit: BoxFit.cover,
-                ),
-              ),
-
-            const SizedBox(height: 20),
-
-            // English title
-            Text(
-              anime['title']?['english'] ?? '',
-              style: const TextStyle(fontSize: 20, fontWeight: FontWeight.bold),
-            ),
-
-            const SizedBox(height: 10),
-
-            // Genres
-            if (anime['genres'] != null)
-              Wrap(
-                spacing: 8,
-                children: (anime['genres'] as List)
-                    .map((genre) => Chip(label: Text(genre)))
-                    .toList(),
-              ),
-
-            const SizedBox(height: 20),
-
-            // Description
-            Text(
-              anime['description'] != null
-                  ? anime['description'].replaceAll(
-                      RegExp(r'<[^>]*>'),
-                      '',
-                    ) // remove HTML tags
-                  : 'No description available.',
-              style: const TextStyle(fontSize: 16),
-            ),
+            buildTopSection(context, anime), // ⭐ Top purple section
+            buildGenres(anime), // optional
+            buildDescription(anime), // optional
           ],
         ),
       ),
