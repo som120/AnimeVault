@@ -120,6 +120,7 @@ class _SearchScreenState extends State<SearchScreen> {
 
     final score = anime['averageScore']?.toString() ?? 'N/A';
     final year = anime['startDate']?['year']?.toString() ?? '—';
+    final episodes = anime['episodes']?.toString() ?? "N/A";
 
     return Stack(
       clipBehavior: Clip.none,
@@ -197,9 +198,10 @@ class _SearchScreenState extends State<SearchScreen> {
 
                     const SizedBox(height: 6),
 
-                    // STAR + SCORE
+                    // ⭐ SCORE + EPISODES
                     Row(
                       children: [
+                        // ⭐ SCORE
                         const Icon(
                           Icons.star_rounded,
                           size: 18,
@@ -209,9 +211,35 @@ class _SearchScreenState extends State<SearchScreen> {
                         Text(
                           "$score%",
                           style: TextStyle(
-                            fontSize: 14,
+                            fontSize: 13,
                             fontWeight: FontWeight.w600,
                             color: Colors.grey.shade800,
+                          ),
+                        ),
+
+                        const SizedBox(width: 12),
+
+                        // SEPARATOR DOT
+                        const Text("•", style: TextStyle(color: Colors.grey)),
+                        const SizedBox(width: 12),
+
+                        // EPISODES TAG
+                        Container(
+                          padding: const EdgeInsets.symmetric(
+                            horizontal: 8,
+                            vertical: 4,
+                          ),
+                          decoration: BoxDecoration(
+                            color: const Color(0xFF714FDC).withOpacity(0.05),
+                            borderRadius: BorderRadius.circular(8),
+                          ),
+                          child: Text(
+                            "$episodes eps",
+                            style: TextStyle(
+                              fontSize: 13,
+                              fontWeight: FontWeight.w600,
+                              color: const Color(0xFF714FDC).withOpacity(0.8),
+                            ),
                           ),
                         ),
                       ],
