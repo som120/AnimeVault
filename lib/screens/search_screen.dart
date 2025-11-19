@@ -1,3 +1,4 @@
+import 'package:ainme_vault/theme/app_theme.dart';
 import 'package:flutter/material.dart';
 import '../services/anilist_service.dart';
 import 'anime_detail_screen.dart';
@@ -95,7 +96,7 @@ class _SearchScreenState extends State<SearchScreen> {
         child: Container(
           padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 8),
           decoration: BoxDecoration(
-            color: active ? Colors.indigo : Colors.grey[300],
+            color: active ? const Color(0xFF714FDC) : Colors.grey[300],
             borderRadius: BorderRadius.circular(25),
           ),
           child: Text(
@@ -145,8 +146,8 @@ class _SearchScreenState extends State<SearchScreen> {
                 borderRadius: BorderRadius.circular(10),
                 child: Image.network(
                   imageUrl,
-                  width: 60,
-                  height: 85,
+                  width: 70,
+                  height: 95,
                   fit: BoxFit.cover,
                 ),
               ),
@@ -156,6 +157,7 @@ class _SearchScreenState extends State<SearchScreen> {
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
+                    // TITLE
                     Text(
                       title,
                       maxLines: 2,
@@ -165,14 +167,53 @@ class _SearchScreenState extends State<SearchScreen> {
                         fontWeight: FontWeight.w600,
                       ),
                     ),
+
                     const SizedBox(height: 6),
+
+                    // FORMAT + YEAR
                     Row(
                       children: [
-                        const Icon(Icons.star, size: 18, color: Colors.amber),
+                        Text(
+                          anime['format'] ?? "TV",
+                          style: TextStyle(
+                            color: Colors.grey.shade600,
+                            fontSize: 13,
+                            fontWeight: FontWeight.w500,
+                          ),
+                        ),
+                        const SizedBox(width: 6),
+                        const Text("•", style: TextStyle(color: Colors.grey)),
+                        const SizedBox(width: 6),
+                        Text(
+                          year,
+                          style: TextStyle(
+                            color: Colors.grey.shade700,
+                            fontSize: 13,
+                            fontWeight: FontWeight.w500,
+                          ),
+                        ),
+                      ],
+                    ),
+
+                    const SizedBox(height: 6),
+
+                    // STAR + SCORE
+                    Row(
+                      children: [
+                        const Icon(
+                          Icons.star_rounded,
+                          size: 18,
+                          color: Colors.amber,
+                        ),
                         const SizedBox(width: 4),
-                        Text(score),
-                        const SizedBox(width: 12),
-                        Text("• $year"),
+                        Text(
+                          "$score%",
+                          style: TextStyle(
+                            fontSize: 14,
+                            fontWeight: FontWeight.w600,
+                            color: Colors.grey.shade800,
+                          ),
+                        ),
                       ],
                     ),
                   ],
@@ -185,25 +226,26 @@ class _SearchScreenState extends State<SearchScreen> {
         // ⭐ RANK BADGE (only visible if rank != null)
         if (rank != null)
           Positioned(
-            top: -6,
-            left: -6,
+            top: 6,
+            left: 0,
             child: Container(
-              padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
+              padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
               decoration: BoxDecoration(
                 color: rank == 1
-                    ? Colors.amber[700] // gold
+                    ? Colors.amber[600] // Gold
                     : rank == 2
-                    ? Colors.grey[400] // silver
+                    ? Colors.grey[500] // Silver
                     : rank == 3
-                    ? Colors.brown[300] // bronze
-                    : Colors.indigo, // other ranks
-                borderRadius: BorderRadius.circular(8),
+                    ? Colors.brown[400] // Bronze
+                    : Colors.indigo, // Others
+                borderRadius: BorderRadius.circular(6),
               ),
               child: Text(
                 "#$rank",
                 style: const TextStyle(
                   color: Colors.white,
-                  fontWeight: FontWeight.bold,
+                  fontWeight: FontWeight.w700,
+                  fontSize: 12,
                 ),
               ),
             ),
@@ -217,7 +259,20 @@ class _SearchScreenState extends State<SearchScreen> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      appBar: AppBar(elevation: 0, backgroundColor: Colors.grey[100]),
+      appBar: AppBar(
+        flexibleSpace: Container(
+          decoration: const BoxDecoration(
+            gradient: LinearGradient(
+              colors: [Color(0xFF714FDC), Color(0xFF9F6DFF), AppTheme.accent],
+              begin: Alignment.topLeft,
+              end: Alignment.bottomRight,
+            ),
+          ),
+        ),
+        elevation: 0,
+        title: null,
+        centerTitle: true,
+      ),
 
       body: Padding(
         padding: const EdgeInsets.all(12),
