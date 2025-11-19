@@ -1,4 +1,6 @@
+import 'package:ainme_vault/main.dart';
 import 'package:ainme_vault/theme/app_theme.dart';
+import 'package:ainme_vault/utils/transitions.dart';
 import 'package:flutter/material.dart';
 import '../services/anilist_service.dart';
 import 'anime_detail_screen.dart';
@@ -349,77 +351,88 @@ class _SearchScreenState extends State<SearchScreen> {
 
   @override
   Widget build(BuildContext context) {
-    return Scaffold(
-      appBar: AppBar(
-        flexibleSpace: Container(
-          decoration: const BoxDecoration(
-            gradient: LinearGradient(
-              colors: [Color(0xFF714FDC), Color(0xFF9F6DFF), AppTheme.accent],
-              begin: Alignment.topLeft,
-              end: Alignment.bottomRight,
-            ),
-          ),
-        ),
-        elevation: 0,
-        title: null,
-        centerTitle: true,
-      ),
-
-      body: Padding(
-        padding: const EdgeInsets.all(12),
-        child: Column(
-          children: [
-            // ------------------------Search bar----------------------
-            buildAnimatedSearchBar(),
-            const SizedBox(height: 10),
-
-            // ------------------ Filter Buttons Row ------------------
-            SizedBox(
-              height: 40,
-              child: SingleChildScrollView(
-                scrollDirection: Axis.horizontal,
-                child: Row(
-                  children: [
-                    buildFilterButton("Top 100", fetchTopAnime),
-                    buildFilterButton("Popular", fetchPopular),
-                    buildFilterButton("Upcoming", fetchUpcoming),
-                    buildFilterButton("Airing", fetchAiring),
-                    buildFilterButton("Movies", fetchMovies),
-                  ],
-                ),
+    return PopScope(
+      canPop: false, // Prevent SearchScreen from closing the app
+      onPopInvokedWithResult: (didPop, result) {
+        if (!didPop) {
+          Navigator.pushReplacement(
+            context,
+            SlideRightRoute(page: const MainScreen()),
+          );
+        }
+      },
+      child: Scaffold(
+        appBar: AppBar(
+          flexibleSpace: Container(
+            decoration: const BoxDecoration(
+              gradient: LinearGradient(
+                colors: [Color(0xFF714FDC), Color(0xFF9F6DFF), AppTheme.accent],
+                begin: Alignment.topLeft,
+                end: Alignment.bottomRight,
               ),
             ),
+          ),
+          elevation: 0,
+          title: null,
+          centerTitle: true,
+        ),
 
-            const SizedBox(height: 10),
+        body: Padding(
+          padding: const EdgeInsets.all(12),
+          child: Column(
+            children: [
+              // ------------------------Search bar----------------------
+              buildAnimatedSearchBar(),
+              const SizedBox(height: 10),
 
-            // ------------------ Anime List ------------------
-            Expanded(
-              child: isLoading
-                  ? const Center(child: CircularProgressIndicator())
-                  : ListView.builder(
-                      itemCount: animeList.length,
-                      itemBuilder: (context, index) {
-                        final anime = animeList[index];
+              // ------------------ Filter Buttons Row ------------------
+              SizedBox(
+                height: 40,
+                child: SingleChildScrollView(
+                  scrollDirection: Axis.horizontal,
+                  child: Row(
+                    children: [
+                      buildFilterButton("Top 100", fetchTopAnime),
+                      buildFilterButton("Popular", fetchPopular),
+                      buildFilterButton("Upcoming", fetchUpcoming),
+                      buildFilterButton("Airing", fetchAiring),
+                      buildFilterButton("Movies", fetchMovies),
+                    ],
+                  ),
+                ),
+              ),
 
-                        return GestureDetector(
-                          onTap: () {
-                            Navigator.push(
-                              context,
-                              MaterialPageRoute(
-                                builder: (context) =>
-                                    AnimeDetailScreen(anime: anime),
-                              ),
-                            );
-                          },
-                          child: buildAnimeCard(
-                            anime,
-                            selectedFilter == "Top 100" ? index + 1 : null,
-                          ),
-                        );
-                      },
-                    ),
-            ),
-          ],
+              const SizedBox(height: 10),
+
+              // ------------------ Anime List ------------------
+              Expanded(
+                child: isLoading
+                    ? const Center(child: CircularProgressIndicator())
+                    : ListView.builder(
+                        itemCount: animeList.length,
+                        itemBuilder: (context, index) {
+                          final anime = animeList[index];
+
+                          return GestureDetector(
+                            onTap: () {
+                              Navigator.push(
+                                context,
+                                MaterialPageRoute(
+                                  builder: (context) =>
+                                      AnimeDetailScreen(anime: anime),
+                                ),
+                              );
+                            },
+                            child: buildAnimeCard(
+                              anime,
+                              selectedFilter == "Top 100" ? index + 1 : null,
+                            ),
+                          );
+                        },
+                      ),
+              ),
+            ],
+          ),
         ),
       ),
     );
