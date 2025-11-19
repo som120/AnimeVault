@@ -19,6 +19,7 @@ class AniListService {
           id
           title { romaji english }
           format
+          description(asHtml: false)
           episodes
           averageScore
           startDate { year }
@@ -35,6 +36,7 @@ class AniListService {
           id
           title { romaji english }
           format
+          description(asHtml: false)
           episodes
           averageScore
           startDate { year }
@@ -51,6 +53,7 @@ class AniListService {
           id
           title { romaji english }
           format
+          description(asHtml: false)
           episodes
           averageScore
           startDate { year }
@@ -67,6 +70,7 @@ class AniListService {
           id
           title { romaji english }
           format
+          description(asHtml: false)
           episodes
           averageScore
           startDate { year }
@@ -83,6 +87,7 @@ class AniListService {
           id
           title { romaji english }
           format
+          description(asHtml: false)
           episodes
           averageScore
           startDate { year }
@@ -99,6 +104,7 @@ class AniListService {
           id
           title { romaji english }
           format
+          description(asHtml: false)
           episodes
           averageScore
           startDate { year }
