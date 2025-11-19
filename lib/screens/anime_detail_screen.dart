@@ -1,3 +1,4 @@
+import 'package:ainme_vault/theme/app_theme.dart';
 import 'package:flutter/material.dart';
 
 class AnimeDetailScreen extends StatelessWidget {
@@ -58,19 +59,6 @@ class AnimeDetailScreen extends StatelessWidget {
                     begin: Alignment.topCenter,
                     end: Alignment.bottomCenter,
                   ),
-                ),
-              ),
-            ),
-
-            // ⬅ BACK BUTTON
-            Positioned(
-              top: 50,
-              left: 16,
-              child: CircleAvatar(
-                backgroundColor: Colors.white.withOpacity(0.25),
-                child: IconButton(
-                  icon: const Icon(Icons.arrow_back, color: Colors.white),
-                  onPressed: () => Navigator.pop(context),
                 ),
               ),
             ),
@@ -215,14 +203,38 @@ class AnimeDetailScreen extends StatelessWidget {
   Widget build(BuildContext context) {
     return Scaffold(
       backgroundColor: Colors.white,
-      body: SingleChildScrollView(
-        child: Column(
-          children: [
-            buildTopSection(context, anime), // ⭐ Top purple section
-            buildGenres(anime), // optional
-            buildDescription(anime), // optional
-          ],
-        ),
+
+      // Wrap whole page in a Stack
+      body: Stack(
+        children: [
+          // ============================
+          // MAIN SCROLLABLE CONTENT
+          // ============================
+          SingleChildScrollView(
+            child: Column(
+              children: [
+                buildTopSection(context, anime),
+                buildGenres(anime),
+                buildDescription(anime),
+              ],
+            ),
+          ),
+
+          // ============================
+          // FIXED BACK BUTTON (NOT SCROLLING)
+          // ============================
+          Positioned(
+            top: 50,
+            left: 16,
+            child: CircleAvatar(
+              backgroundColor: AppTheme.accent.withOpacity(0.35),
+              child: IconButton(
+                icon: const Icon(Icons.arrow_back, color: Colors.white),
+                onPressed: () => Navigator.pop(context),
+              ),
+            ),
+          ),
+        ],
       ),
     );
   }
