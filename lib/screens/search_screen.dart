@@ -25,85 +25,61 @@ class _SearchScreenState extends State<SearchScreen> {
   @override
   void initState() {
     super.initState();
-    fetchTopAnime(); // default
+    // Initial load
+    _fetchAnimeByCategory("Top 100", AniListService.getTopAnime);
   }
 
-  // ------------------ CATEGORY FUNCTIONS ------------------
+  Future<void> _fetchAnimeByCategory(
+    String filterName,
+    Future<List> Function() apiCall,
+  ) async {
+    // Prevent unnecessary reloads
+    if (selectedFilter == filterName &&
+        animeList.isNotEmpty &&
+        filterName != "Search") {
+      return;
+    }
 
-  void fetchTopAnime() async {
     setState(() {
       isLoading = true;
-      selectedFilter = "Top 100";
-    });
-    animeList = await AniListService.getTopAnime();
-    if (!mounted) return; // 👈 FIX
-    setState(() => isLoading = false);
-  }
 
-  void fetchPopular() async {
-    setState(() {
-      isLoading = true;
-      selectedFilter = "Popular";
-    });
-    animeList = await AniListService.getPopularAnime();
-    if (!mounted) return; // 👈 FIX
-    setState(() => isLoading = false);
-  }
+      // Only clear search bar on filter change
+      if (filterName != "Search") {
+        _controller.clear();
+      }
 
-  void fetchUpcoming() async {
-    setState(() {
-      isLoading = true;
-      selectedFilter = "Upcoming";
+      selectedFilter = filterName;
     });
-    animeList = await AniListService.getUpcomingAnime();
-    if (!mounted) return; // 👈 FIX
-    setState(() => isLoading = false);
-  }
 
-  void fetchAiring() async {
-    setState(() {
-      isLoading = true;
-      selectedFilter = "Airing";
-    });
-    animeList = await AniListService.getAiringAnime();
-    if (!mounted) return; // 👈 FIX
-    setState(() => isLoading = false);
-  }
-
-  void fetchMovies() async {
-    setState(() {
-      isLoading = true;
-      selectedFilter = "Movies";
-    });
-    animeList = await AniListService.getTopMovies();
-    if (!mounted) return; // 👈 FIX
-    setState(() => isLoading = false);
+    try {
+      final data = await apiCall();
+      if (!mounted) return;
+      setState(() {
+        animeList = data;
+        isLoading = false;
+      });
+    } catch (e) {
+      if (!mounted) return;
+      setState(() => isLoading = false);
+    }
   }
 
   // ------------------ SEARCH FUNCTION ------------------
-  void searchAnime() async {
+  void searchAnime() {
     final text = _controller.text.trim();
     if (text.isEmpty) return;
 
-    setState(() {
-      isLoading = true;
-      selectedFilter = "Search";
-    });
-
-    animeList = await AniListService.searchAnime(text);
-    if (!mounted) return; // 👈 FIX
-    setState(() => isLoading = false);
+    _fetchAnimeByCategory("Search", () => AniListService.searchAnime(text));
   }
 
-  // ------------------ UI BUTTON WIDGET ------------------
-
-  Widget buildFilterButton(String label, Function onTap) {
+  // ------------------ UI HELPER ------------------
+  Widget buildFilterButton(String label, Future<List> Function() apiCall) {
     final bool active = selectedFilter == label;
 
     return Padding(
       padding: const EdgeInsets.symmetric(horizontal: 6),
       child: GestureDetector(
-        onTap: () => onTap(),
+        onTap: () => _fetchAnimeByCategory(label, apiCall),
         child: Container(
           padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 8),
           decoration: BoxDecoration(
@@ -119,177 +95,6 @@ class _SearchScreenState extends State<SearchScreen> {
           ),
         ),
       ),
-    );
-  }
-
-  Widget buildAnimeCard(anime, int? rank) {
-    final imageUrl =
-        anime['coverImage']?['medium'] ?? anime['coverImage']?['large'];
-
-    final title =
-        anime['title']?['romaji'] ?? anime['title']?['english'] ?? 'Unknown';
-
-    final score = anime['averageScore']?.toString() ?? 'N/A';
-    final year = anime['startDate']?['year']?.toString() ?? '—';
-    final episodes = anime['episodes']?.toString() ?? "N/A";
-
-    return Stack(
-      clipBehavior: Clip.none,
-      children: [
-        // MAIN CARD
-        Container(
-          margin: const EdgeInsets.symmetric(vertical: 6),
-          padding: const EdgeInsets.all(10),
-          decoration: BoxDecoration(
-            color: Colors.white,
-            borderRadius: BorderRadius.circular(14),
-            boxShadow: [
-              BoxShadow(
-                color: Colors.black.withOpacity(0.05),
-                blurRadius: 8,
-                offset: const Offset(0, 3),
-              ),
-            ],
-          ),
-          child: Row(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              ClipRRect(
-                borderRadius: BorderRadius.circular(10),
-                child: Image.network(
-                  imageUrl,
-                  width: 70,
-                  height: 95,
-                  fit: BoxFit.cover,
-                ),
-              ),
-              const SizedBox(width: 12),
-
-              Expanded(
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    // TITLE
-                    Text(
-                      title,
-                      maxLines: 2,
-                      overflow: TextOverflow.ellipsis,
-                      style: const TextStyle(
-                        fontSize: 16,
-                        fontWeight: FontWeight.w600,
-                      ),
-                    ),
-
-                    const SizedBox(height: 6),
-
-                    // FORMAT + YEAR
-                    Row(
-                      children: [
-                        Text(
-                          anime['format'] ?? "TV",
-                          style: TextStyle(
-                            color: Colors.grey.shade600,
-                            fontSize: 13,
-                            fontWeight: FontWeight.w500,
-                          ),
-                        ),
-                        const SizedBox(width: 6),
-                        const Text("•", style: TextStyle(color: Colors.grey)),
-                        const SizedBox(width: 6),
-                        Text(
-                          year,
-                          style: TextStyle(
-                            color: Colors.grey.shade700,
-                            fontSize: 13,
-                            fontWeight: FontWeight.w500,
-                          ),
-                        ),
-                      ],
-                    ),
-
-                    const SizedBox(height: 6),
-
-                    // ⭐ SCORE + EPISODES
-                    Row(
-                      children: [
-                        // ⭐ SCORE
-                        const Icon(
-                          Icons.star_rounded,
-                          size: 18,
-                          color: Colors.amber,
-                        ),
-                        const SizedBox(width: 4),
-                        Text(
-                          "$score%",
-                          style: TextStyle(
-                            fontSize: 13,
-                            fontWeight: FontWeight.w600,
-                            color: Colors.grey.shade800,
-                          ),
-                        ),
-
-                        const SizedBox(width: 12),
-
-                        // SEPARATOR DOT
-                        const Text("•", style: TextStyle(color: Colors.grey)),
-                        const SizedBox(width: 12),
-
-                        // EPISODES TAG
-                        Container(
-                          padding: const EdgeInsets.symmetric(
-                            horizontal: 8,
-                            vertical: 4,
-                          ),
-                          decoration: BoxDecoration(
-                            color: const Color(0xFF714FDC).withOpacity(0.05),
-                            borderRadius: BorderRadius.circular(8),
-                          ),
-                          child: Text(
-                            "$episodes eps",
-                            style: TextStyle(
-                              fontSize: 13,
-                              fontWeight: FontWeight.w600,
-                              color: const Color(0xFF714FDC).withOpacity(0.8),
-                            ),
-                          ),
-                        ),
-                      ],
-                    ),
-                  ],
-                ),
-              ),
-            ],
-          ),
-        ),
-
-        // ⭐ RANK BADGE (only visible if rank != null)
-        if (rank != null)
-          Positioned(
-            top: 6,
-            left: 0,
-            child: Container(
-              padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
-              decoration: BoxDecoration(
-                color: rank == 1
-                    ? Colors.amber[600] // Gold
-                    : rank == 2
-                    ? Colors.grey[500] // Silver
-                    : rank == 3
-                    ? Colors.brown[400] // Bronze
-                    : Colors.indigo, // Others
-                borderRadius: BorderRadius.circular(6),
-              ),
-              child: Text(
-                "#$rank",
-                style: const TextStyle(
-                  color: Colors.white,
-                  fontWeight: FontWeight.w700,
-                  fontSize: 12,
-                ),
-              ),
-            ),
-          ),
-      ],
     );
   }
 
@@ -312,31 +117,26 @@ class _SearchScreenState extends State<SearchScreen> {
       ),
       child: Row(
         children: [
-          // 🔍 Icon
           Icon(
             Icons.search,
             size: 24,
             color: isFocused ? const Color(0xFF714FDC) : Colors.grey[500],
           ),
-
           const SizedBox(width: 12),
-
-          // ✏ Text Input
           Expanded(
             child: FocusScope(
               child: Focus(
-                onFocusChange: (hasFocus) {
-                  setState(() => isFocused = hasFocus);
-                },
+                onFocusChange: (hasFocus) =>
+                    setState(() => isFocused = hasFocus),
                 child: TextField(
                   controller: _controller,
                   onChanged: (value) {
-                    setState(() {});
+                    setState(() {}); // update clear icon
 
                     if (_debounce?.isActive ?? false) _debounce!.cancel();
 
                     _debounce = Timer(const Duration(milliseconds: 600), () {
-                      if (!mounted) return; // 👈 CRITICAL FIX
+                      if (!mounted) return;
                       if (value.trim().isNotEmpty) {
                         searchAnime();
                       }
@@ -353,13 +153,13 @@ class _SearchScreenState extends State<SearchScreen> {
               ),
             ),
           ),
-
-          // ❌ Clear button
           if (_controller.text.isNotEmpty)
             GestureDetector(
               onTap: () {
                 _controller.clear();
                 setState(() {});
+                // Optional: If you want clearing search to go back to Top 100:
+                // _fetchAnimeByCategory("Top 100", AniListService.getTopAnime);
               },
               child: const Icon(Icons.close, size: 20, color: Colors.grey),
             ),
@@ -369,11 +169,10 @@ class _SearchScreenState extends State<SearchScreen> {
   }
 
   // ------------------ BUILD ------------------
-
   @override
   Widget build(BuildContext context) {
     return PopScope(
-      canPop: false, // Prevent SearchScreen from closing the app
+      canPop: false,
       onPopInvokedWithResult: (didPop, result) {
         if (!didPop) {
           Navigator.pushReplacement(
@@ -397,27 +196,34 @@ class _SearchScreenState extends State<SearchScreen> {
           title: null,
           centerTitle: true,
         ),
-
         body: Padding(
           padding: const EdgeInsets.all(12),
           child: Column(
             children: [
-              // ------------------------Search bar----------------------
               buildAnimatedSearchBar(),
               const SizedBox(height: 10),
 
-              // ------------------ Filter Buttons Row ------------------
+              // ------------------ Filter Buttons ------------------
               SizedBox(
                 height: 40,
                 child: SingleChildScrollView(
                   scrollDirection: Axis.horizontal,
                   child: Row(
                     children: [
-                      buildFilterButton("Top 100", fetchTopAnime),
-                      buildFilterButton("Popular", fetchPopular),
-                      buildFilterButton("Upcoming", fetchUpcoming),
-                      buildFilterButton("Airing", fetchAiring),
-                      buildFilterButton("Movies", fetchMovies),
+                      buildFilterButton("Top 100", AniListService.getTopAnime),
+                      buildFilterButton(
+                        "Popular",
+                        AniListService.getPopularAnime,
+                      ),
+                      buildFilterButton(
+                        "Upcoming",
+                        AniListService.getUpcomingAnime,
+                      ),
+                      buildFilterButton(
+                        "Airing",
+                        AniListService.getAiringAnime,
+                      ),
+                      buildFilterButton("Movies", AniListService.getTopMovies),
                     ],
                   ),
                 ),
@@ -425,7 +231,7 @@ class _SearchScreenState extends State<SearchScreen> {
 
               const SizedBox(height: 10),
 
-              // ------------------ Anime List ------------------
+              // ------------------ List View ------------------
               Expanded(
                 child: isLoading
                     ? const Center(child: CircularProgressIndicator())
@@ -433,8 +239,11 @@ class _SearchScreenState extends State<SearchScreen> {
                         itemCount: animeList.length,
                         itemBuilder: (context, index) {
                           final anime = animeList[index];
-
-                          return GestureDetector(
+                          return AnimeListCard(
+                            anime: anime,
+                            rank: selectedFilter == "Top 100"
+                                ? index + 1
+                                : null,
                             onTap: () {
                               Navigator.push(
                                 context,
@@ -444,10 +253,6 @@ class _SearchScreenState extends State<SearchScreen> {
                                 ),
                               );
                             },
-                            child: buildAnimeCard(
-                              anime,
-                              selectedFilter == "Top 100" ? index + 1 : null,
-                            ),
                           );
                         },
                       ),
@@ -464,5 +269,194 @@ class _SearchScreenState extends State<SearchScreen> {
     _debounce?.cancel();
     _controller.dispose();
     super.dispose();
+  }
+}
+
+// ------------------ 2. EXTRACTED WIDGET (Removed Box Color) ------------------
+class AnimeListCard extends StatelessWidget {
+  final dynamic anime;
+  final int? rank;
+  final VoidCallback onTap;
+
+  const AnimeListCard({
+    super.key,
+    required this.anime,
+    this.rank,
+    required this.onTap,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    final imageUrl =
+        anime['coverImage']?['medium'] ?? anime['coverImage']?['large'];
+    final title =
+        anime['title']?['romaji'] ?? anime['title']?['english'] ?? 'Unknown';
+    final score = anime['averageScore']?.toString() ?? 'N/A';
+    final year = anime['startDate']?['year']?.toString() ?? '—';
+    final episodes = anime['episodes']?.toString() ?? "N/A";
+
+    return GestureDetector(
+      onTap: onTap,
+      child: Stack(
+        clipBehavior: Clip.none,
+        children: [
+          Container(
+            margin: const EdgeInsets.symmetric(vertical: 6),
+            padding: const EdgeInsets.all(10),
+            decoration: BoxDecoration(
+              color: Colors.white,
+              borderRadius: BorderRadius.circular(14),
+              boxShadow: [
+                BoxShadow(
+                  color: Colors.black.withOpacity(0.05),
+                  blurRadius: 8,
+                  offset: const Offset(0, 3),
+                ),
+              ],
+            ),
+            child: Row(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                ClipRRect(
+                  borderRadius: BorderRadius.circular(10),
+                  child: Image.network(
+                    imageUrl,
+                    width: 70,
+                    height: 95,
+                    fit: BoxFit.cover,
+                    errorBuilder: (ctx, err, stack) => Container(
+                      width: 70,
+                      height: 95,
+                      color: Colors.grey[300],
+                      child: const Icon(Icons.broken_image),
+                    ),
+                  ),
+                ),
+                const SizedBox(width: 12),
+                Expanded(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text(
+                        title,
+                        maxLines: 2,
+                        overflow: TextOverflow.ellipsis,
+                        style: const TextStyle(
+                          fontSize: 16,
+                          fontWeight: FontWeight.w600,
+                        ),
+                      ),
+                      const SizedBox(height: 8),
+
+                      // ⭐ Format + Year (Color Removed)
+                      // I removed the decoration: BoxDecoration(...)
+                      Container(
+                        // padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4), // Optional: reduce padding if no box
+                        child: Row(
+                          mainAxisSize: MainAxisSize.min,
+                          children: [
+                            Text(
+                              anime['format'] ?? "TV",
+                              style: TextStyle(
+                                color: Colors.grey.shade800,
+                                fontSize: 12,
+                                fontWeight: FontWeight.w600,
+                              ),
+                            ),
+                            const SizedBox(width: 6),
+                            Icon(
+                              Icons.circle,
+                              size: 4,
+                              color: Colors.grey.shade500,
+                            ),
+                            const SizedBox(width: 6),
+                            Text(
+                              year,
+                              style: TextStyle(
+                                color: Colors.grey.shade800,
+                                fontSize: 12,
+                                fontWeight: FontWeight.w600,
+                              ),
+                            ),
+                          ],
+                        ),
+                      ),
+
+                      const SizedBox(height: 8),
+
+                      Row(
+                        children: [
+                          const Icon(
+                            Icons.star_rounded,
+                            size: 18,
+                            color: Colors.amber,
+                          ),
+                          const SizedBox(width: 4),
+                          Text(
+                            "$score%",
+                            style: TextStyle(
+                              fontSize: 13,
+                              fontWeight: FontWeight.w600,
+                              color: Colors.grey.shade800,
+                            ),
+                          ),
+                          const SizedBox(width: 12),
+                          const Text("•", style: TextStyle(color: Colors.grey)),
+                          const SizedBox(width: 12),
+                          Container(
+                            padding: const EdgeInsets.symmetric(
+                              horizontal: 8,
+                              vertical: 4,
+                            ),
+                            decoration: BoxDecoration(
+                              color: const Color(0xFF714FDC).withOpacity(0.05),
+                              borderRadius: BorderRadius.circular(8),
+                            ),
+                            child: Text(
+                              "$episodes eps",
+                              style: TextStyle(
+                                fontSize: 13,
+                                fontWeight: FontWeight.w600,
+                                color: const Color(0xFF714FDC).withOpacity(0.8),
+                              ),
+                            ),
+                          ),
+                        ],
+                      ),
+                    ],
+                  ),
+                ),
+              ],
+            ),
+          ),
+          if (rank != null)
+            Positioned(
+              top: 6,
+              left: 0,
+              child: Container(
+                padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
+                decoration: BoxDecoration(
+                  color: rank == 1
+                      ? Colors.amber[600]
+                      : rank == 2
+                      ? Colors.grey[500]
+                      : rank == 3
+                      ? Colors.brown[400]
+                      : Colors.indigo,
+                  borderRadius: BorderRadius.circular(6),
+                ),
+                child: Text(
+                  "#$rank",
+                  style: const TextStyle(
+                    color: Colors.white,
+                    fontWeight: FontWeight.w700,
+                    fontSize: 12,
+                  ),
+                ),
+              ),
+            ),
+        ],
+      ),
+    );
   }
 }
