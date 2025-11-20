@@ -4,6 +4,7 @@ import 'package:ainme_vault/utils/transitions.dart';
 import 'package:flutter/material.dart';
 import '../services/anilist_service.dart';
 import 'anime_detail_screen.dart';
+import 'dart:async';
 
 class SearchScreen extends StatefulWidget {
   const SearchScreen({super.key});
@@ -17,6 +18,7 @@ class _SearchScreenState extends State<SearchScreen> {
   List animeList = [];
   bool isLoading = false;
   bool isFocused = false;
+  Timer? _debounce;
 
   String selectedFilter = "Top 100";
 
@@ -34,6 +36,7 @@ class _SearchScreenState extends State<SearchScreen> {
       selectedFilter = "Top 100";
     });
     animeList = await AniListService.getTopAnime();
+    if (!mounted) return; // 👈 FIX
     setState(() => isLoading = false);
   }
 
@@ -43,6 +46,7 @@ class _SearchScreenState extends State<SearchScreen> {
       selectedFilter = "Popular";
     });
     animeList = await AniListService.getPopularAnime();
+    if (!mounted) return; // 👈 FIX
     setState(() => isLoading = false);
   }
 
@@ -52,6 +56,7 @@ class _SearchScreenState extends State<SearchScreen> {
       selectedFilter = "Upcoming";
     });
     animeList = await AniListService.getUpcomingAnime();
+    if (!mounted) return; // 👈 FIX
     setState(() => isLoading = false);
   }
 
@@ -61,6 +66,7 @@ class _SearchScreenState extends State<SearchScreen> {
       selectedFilter = "Airing";
     });
     animeList = await AniListService.getAiringAnime();
+    if (!mounted) return; // 👈 FIX
     setState(() => isLoading = false);
   }
 
@@ -70,6 +76,7 @@ class _SearchScreenState extends State<SearchScreen> {
       selectedFilter = "Movies";
     });
     animeList = await AniListService.getTopMovies();
+    if (!mounted) return; // 👈 FIX
     setState(() => isLoading = false);
   }
 
@@ -84,6 +91,7 @@ class _SearchScreenState extends State<SearchScreen> {
     });
 
     animeList = await AniListService.searchAnime(text);
+    if (!mounted) return; // 👈 FIX
     setState(() => isLoading = false);
   }
 
@@ -322,7 +330,20 @@ class _SearchScreenState extends State<SearchScreen> {
                 },
                 child: TextField(
                   controller: _controller,
+                  onChanged: (value) {
+                    setState(() {});
+
+                    if (_debounce?.isActive ?? false) _debounce!.cancel();
+
+                    _debounce = Timer(const Duration(milliseconds: 600), () {
+                      if (!mounted) return; // 👈 CRITICAL FIX
+                      if (value.trim().isNotEmpty) {
+                        searchAnime();
+                      }
+                    });
+                  },
                   onSubmitted: (_) => searchAnime(),
+                  textInputAction: TextInputAction.search,
                   decoration: const InputDecoration(
                     hintText: "Search anime...",
                     hintStyle: TextStyle(color: Colors.grey, fontSize: 16),
@@ -436,5 +457,12 @@ class _SearchScreenState extends State<SearchScreen> {
         ),
       ),
     );
+  }
+
+  @override
+  void dispose() {
+    _debounce?.cancel();
+    _controller.dispose();
+    super.dispose();
   }
 }
