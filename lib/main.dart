@@ -161,7 +161,7 @@ class _MainScreenState extends State<MainScreen> {
                   ),
                   padding: const EdgeInsets.symmetric(
                     vertical: 12,
-                    horizontal: 20,
+                    horizontal: 12,
                   ),
 
                   child: Row(
