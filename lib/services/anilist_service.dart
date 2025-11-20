@@ -22,6 +22,8 @@ class AniListService {
           description(asHtml: false)
           episodes
           averageScore
+          status
+          bannerImage
           startDate { year }
           coverImage { large medium }
         }
@@ -39,6 +41,8 @@ class AniListService {
           description(asHtml: false)
           episodes
           averageScore
+          status
+          bannerImage
           startDate { year }
           coverImage { medium large }
         }
@@ -56,6 +60,8 @@ class AniListService {
           description(asHtml: false)
           episodes
           averageScore
+          status
+          bannerImage
           startDate { year }
           coverImage { medium large }
         }
@@ -73,6 +79,8 @@ class AniListService {
           description(asHtml: false)
           episodes
           averageScore
+          status
+          bannerImage
           startDate { year }
           coverImage { medium large }
         }
@@ -90,6 +98,8 @@ class AniListService {
           description(asHtml: false)
           episodes
           averageScore
+          status
+          bannerImage
           startDate { year }
           coverImage { medium large }
         }
@@ -107,6 +117,8 @@ class AniListService {
           description(asHtml: false)
           episodes
           averageScore
+          status
+          bannerImage
           startDate { year }
           coverImage { medium large }
         }
