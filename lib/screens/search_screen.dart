@@ -29,24 +29,26 @@ class _SearchScreenState extends State<SearchScreen> {
     _fetchAnimeByCategory("Top 100", AniListService.getTopAnime);
   }
 
-  // ------------------ 1. FIX IS HERE ------------------
   Future<void> _fetchAnimeByCategory(
-      String filterName, Future<List> Function() apiCall) async {
-    
-    // Logic Fix: Added '&& animeList.isNotEmpty'
-    // This ensures that if the list is empty (like at first launch), 
-    // it fetches data even if the tab name matches.
-    if (selectedFilter == filterName && 
-        !isLoading && 
-        filterName != "Search" && 
-        animeList.isNotEmpty) {
+    String filterName,
+    Future<List> Function() apiCall,
+  ) async {
+    // Prevent unnecessary reloads
+    if (selectedFilter == filterName &&
+        animeList.isNotEmpty &&
+        filterName != "Search") {
       return;
     }
 
     setState(() {
       isLoading = true;
+
+      // Only clear search bar on filter change
+      if (filterName != "Search") {
+        _controller.clear();
+      }
+
       selectedFilter = filterName;
-      if (filterName != "Search") _controller.clear();
     });
 
     try {
@@ -63,7 +65,7 @@ class _SearchScreenState extends State<SearchScreen> {
   }
 
   // ------------------ SEARCH FUNCTION ------------------
-  void searchAnime() async {
+  void searchAnime() {
     final text = _controller.text.trim();
     if (text.isEmpty) return;
 
@@ -124,15 +126,20 @@ class _SearchScreenState extends State<SearchScreen> {
           Expanded(
             child: FocusScope(
               child: Focus(
-                onFocusChange: (hasFocus) => setState(() => isFocused = hasFocus),
+                onFocusChange: (hasFocus) =>
+                    setState(() => isFocused = hasFocus),
                 child: TextField(
                   controller: _controller,
                   onChanged: (value) {
-                    setState(() {});
+                    setState(() {}); // update clear icon
+
                     if (_debounce?.isActive ?? false) _debounce!.cancel();
+
                     _debounce = Timer(const Duration(milliseconds: 600), () {
                       if (!mounted) return;
-                      if (value.trim().isNotEmpty) searchAnime();
+                      if (value.trim().isNotEmpty) {
+                        searchAnime();
+                      }
                     });
                   },
                   onSubmitted: (_) => searchAnime(),
@@ -204,9 +211,18 @@ class _SearchScreenState extends State<SearchScreen> {
                   child: Row(
                     children: [
                       buildFilterButton("Top 100", AniListService.getTopAnime),
-                      buildFilterButton("Popular", AniListService.getPopularAnime),
-                      buildFilterButton("Upcoming", AniListService.getUpcomingAnime),
-                      buildFilterButton("Airing", AniListService.getAiringAnime),
+                      buildFilterButton(
+                        "Popular",
+                        AniListService.getPopularAnime,
+                      ),
+                      buildFilterButton(
+                        "Upcoming",
+                        AniListService.getUpcomingAnime,
+                      ),
+                      buildFilterButton(
+                        "Airing",
+                        AniListService.getAiringAnime,
+                      ),
                       buildFilterButton("Movies", AniListService.getTopMovies),
                     ],
                   ),
@@ -225,7 +241,9 @@ class _SearchScreenState extends State<SearchScreen> {
                           final anime = animeList[index];
                           return AnimeListCard(
                             anime: anime,
-                            rank: selectedFilter == "Top 100" ? index + 1 : null,
+                            rank: selectedFilter == "Top 100"
+                                ? index + 1
+                                : null,
                             onTap: () {
                               Navigator.push(
                                 context,
@@ -346,8 +364,11 @@ class AnimeListCard extends StatelessWidget {
                               ),
                             ),
                             const SizedBox(width: 6),
-                            Icon(Icons.circle,
-                                size: 4, color: Colors.grey.shade500),
+                            Icon(
+                              Icons.circle,
+                              size: 4,
+                              color: Colors.grey.shade500,
+                            ),
                             const SizedBox(width: 6),
                             Text(
                               year,
@@ -365,8 +386,11 @@ class AnimeListCard extends StatelessWidget {
 
                       Row(
                         children: [
-                          const Icon(Icons.star_rounded,
-                              size: 18, color: Colors.amber),
+                          const Icon(
+                            Icons.star_rounded,
+                            size: 18,
+                            color: Colors.amber,
+                          ),
                           const SizedBox(width: 4),
                           Text(
                             "$score%",
@@ -381,7 +405,9 @@ class AnimeListCard extends StatelessWidget {
                           const SizedBox(width: 12),
                           Container(
                             padding: const EdgeInsets.symmetric(
-                                horizontal: 8, vertical: 4),
+                              horizontal: 8,
+                              vertical: 4,
+                            ),
                             decoration: BoxDecoration(
                               color: const Color(0xFF714FDC).withOpacity(0.05),
                               borderRadius: BorderRadius.circular(8),
@@ -413,10 +439,10 @@ class AnimeListCard extends StatelessWidget {
                   color: rank == 1
                       ? Colors.amber[600]
                       : rank == 2
-                          ? Colors.grey[500]
-                          : rank == 3
-                              ? Colors.brown[400]
-                              : Colors.indigo,
+                      ? Colors.grey[500]
+                      : rank == 3
+                      ? Colors.brown[400]
+                      : Colors.indigo,
                   borderRadius: BorderRadius.circular(6),
                 ),
                 child: Text(
