@@ -13,9 +13,10 @@ class AnimeDetailScreen extends StatelessWidget {
     final title = anime['title']?['romaji'] ?? "Unknown";
     final subtitle = anime['title']?['english'] ?? "";
 
+    // Data preparation
     final format = anime['format'] ?? "TV";
     final status = anime['status']?.replaceAll("_", " ") ?? "N/A";
-    final episodes = anime['episodes']?.toString() ?? "N/A";
+    final episodes = anime['episodes']?.toString() ?? "?";
     final year = anime['startDate']?['year']?.toString() ?? "----";
 
     return Column(
@@ -43,11 +44,24 @@ class AnimeDetailScreen extends StatelessWidget {
                         ),
                       ),
                     ),
-                    // Blur Effect
+                    // 2. Blur + Linear Gradient Overlay
                     BackdropFilter(
-                      filter: ImageFilter.blur(sigmaX: 4, sigmaY: 4),
-                      child: Container(color: Colors.black.withOpacity(0.2)),
+                      filter: ImageFilter.blur(sigmaX: 1, sigmaY: 1),
+                      child: Container(
+                        decoration: BoxDecoration(
+                          gradient: LinearGradient(
+                            begin: Alignment.topCenter,
+                            end: Alignment.bottomCenter,
+                            colors: [
+                              Colors.black.withOpacity(0.2), // Light dark at top
+                              Colors.black.withOpacity(0.7), // Darker at bottom
+                            ],
+                            stops: const [0.0, 1.0],
+                          ),
+                        ),
+                      ),
                     ),
+                    
                   ],
                 ),
               ),
@@ -85,19 +99,23 @@ class AnimeDetailScreen extends StatelessWidget {
           ],
         ),
 
-        // Enough space for the poster to overlap
+        // Space for the poster overlap
         const SizedBox(height: 180),
 
         // ⭐ TITLE
-        Text(
-          title,
-          textAlign: TextAlign.center,
-          style: const TextStyle(fontSize: 24, fontWeight: FontWeight.bold),
+        Padding(
+          padding: const EdgeInsets.symmetric(horizontal: 20),
+          child: Text(
+            title,
+            textAlign: TextAlign.center,
+            style: const TextStyle(fontSize: 24, fontWeight: FontWeight.bold),
+          ),
         ),
 
+        // ⭐ SUBTITLE
         if (subtitle.isNotEmpty)
           Padding(
-            padding: const EdgeInsets.only(top: 4.0),
+            padding: const EdgeInsets.only(top: 4.0, left: 20, right: 20),
             child: Text(
               subtitle,
               textAlign: TextAlign.center,
@@ -105,62 +123,93 @@ class AnimeDetailScreen extends StatelessWidget {
             ),
           ),
 
-        const SizedBox(height: 20),
+        const SizedBox(height: 24),
 
-        Padding(
-          padding: const EdgeInsets.symmetric(horizontal: 16.0),
+        // INFO CARD
+        Container(
+          margin: const EdgeInsets.symmetric(horizontal: 20),
+          padding: const EdgeInsets.symmetric(vertical: 10, horizontal: 4),
+          decoration: BoxDecoration(
+            color: Colors.white,
+            borderRadius: BorderRadius.circular(25),
+            boxShadow: [
+              BoxShadow(
+                color: Colors.black.withOpacity(0.14),
+                blurRadius: 15,
+                spreadRadius: 2,
+                offset: const Offset(0, 3),
+              ),
+            ],
+          ),
           child: Row(
-            mainAxisAlignment: MainAxisAlignment.spaceBetween,
+            mainAxisAlignment: MainAxisAlignment.spaceEvenly,
             children: [
-              buildInfoBox("Format", format),
-              buildInfoBox("Status", status),
-              buildInfoBox("Episodes", episodes),
-              buildInfoBox("Year", year),
+              buildStatColumn("Format", format),
+              buildStatColumn("Status", _formatStatus(status)),
+              buildStatColumn("Episodes", episodes),
+              buildStatColumn("Year", year),
             ],
           ),
         ),
 
-        const SizedBox(height: 16),
+        const SizedBox(height: 24),
       ],
     );
   }
 
-  // Reusable small info box
-  Widget buildInfoBox(String label, String value) {
+  // Helper to title-case the status (e.g., "FINISHED" -> "Finished")
+  String _formatStatus(String status) {
+    if (status.isEmpty) return "N/A";
+    return status[0].toUpperCase() + status.substring(1).toLowerCase();
+  }
+
+  // Widget for a single column in the info card
+  Widget buildStatColumn(String label, String value) {
     return Column(
       children: [
         Text(
           label,
           style: const TextStyle(
-            fontSize: 12,
-            color: Colors.grey,
-            fontWeight: FontWeight.w500,
+            fontSize: 13,
+            fontWeight: FontWeight.bold, // Bold label (Top row)
+            color: Colors.black87,
           ),
         ),
-        const SizedBox(height: 4),
+        const SizedBox(height: 6),
         Text(
           value,
-          style: const TextStyle(fontSize: 14, fontWeight: FontWeight.bold),
+          style: TextStyle(
+            fontSize: 13,
+            color: Colors.grey.shade600, // Grey value (Bottom row)
+            fontWeight: FontWeight.w500,
+          ),
         ),
       ],
     );
   }
+ 
 
   Widget buildGenres(Map<String, dynamic> anime) {
     final genres = anime['genres'] ?? [];
-
     if (genres.isEmpty) return const SizedBox.shrink();
 
     return Padding(
       padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
       child: Wrap(
+        alignment: WrapAlignment.center,
         spacing: 8,
         runSpacing: 8,
         children: genres.map<Widget>((genre) {
           return Chip(
             label: Text(genre),
-            backgroundColor: const Color(0xFFEDE7FF),
-            labelStyle: const TextStyle(fontWeight: FontWeight.w600),
+            backgroundColor: const Color(0xFF714FDC).withOpacity(0.05),
+            labelStyle: const TextStyle(
+              fontSize: 12,
+              fontWeight: FontWeight.w600,
+              color: Color(0xFF714FDC),
+            ),
+            side: BorderSide.none,
+            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
           );
         }).toList(),
       ),
@@ -169,20 +218,23 @@ class AnimeDetailScreen extends StatelessWidget {
 
   Widget buildDescription(Map<String, dynamic> anime) {
     final description = anime['description'] ?? "No description available.";
-
     return Padding(
-      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+      padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 12),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           const Text(
             "Description",
-            style: TextStyle(fontSize: 20, fontWeight: FontWeight.bold),
+            style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
           ),
           const SizedBox(height: 8),
           Text(
             description.replaceAll(RegExp(r'<[^>]*>'), ''), // Remove HTML tags
-            style: TextStyle(fontSize: 16, color: Colors.grey.shade800),
+            style: TextStyle(
+              fontSize: 15,
+              color: Colors.grey.shade700,
+              height: 1.5,
+            ),
           ),
         ],
       ),
@@ -192,32 +244,26 @@ class AnimeDetailScreen extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      backgroundColor: Colors.white,
-
-      // Wrap whole page in a Stack
+      backgroundColor: Colors.white, // Make sure background is white for shadow contrast
       body: Stack(
         children: [
-          // ============================
-          // MAIN SCROLLABLE CONTENT
-          // ============================
           SingleChildScrollView(
             child: Column(
               children: [
                 buildTopSection(context, anime),
                 buildGenres(anime),
                 buildDescription(anime),
+                const SizedBox(height: 50),
               ],
             ),
           ),
 
-          // ============================
-          // FIXED BACK BUTTON (NOT SCROLLING)
-          // ============================
+          // Back Button
           Positioned(
             top: 50,
             left: 16,
             child: CircleAvatar(
-              backgroundColor: AppTheme.accent.withOpacity(0.35),
+              backgroundColor:  AppTheme.primary.withOpacity(0.5),
               child: IconButton(
                 icon: const Icon(Icons.arrow_back, color: Colors.white),
                 onPressed: () => Navigator.pop(context),
