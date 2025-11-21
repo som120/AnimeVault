@@ -172,6 +172,7 @@ class _SearchScreenState extends State<SearchScreen> {
   // ------------------ BUILD ------------------
   @override
   Widget build(BuildContext context) {
+    final topPadding = MediaQuery.of(context).padding.top;
     return PopScope(
       canPop: false,
       onPopInvokedWithResult: (didPop, result) {
@@ -183,82 +184,79 @@ class _SearchScreenState extends State<SearchScreen> {
         }
       },
       child: Scaffold(
-        appBar: AppBar(
-          flexibleSpace: Container(
-            decoration: const BoxDecoration(
-              gradient: LinearGradient(
-                colors: [Color(0xFF714FDC), Color(0xFF9F6DFF), AppTheme.accent],
-                begin: Alignment.topLeft,
-                end: Alignment.bottomRight,
-              ),
-            ),
-          ),
-          elevation: 0,
-          title: null,
-          centerTitle: true,
-        ),
-        body: Padding(
-          padding: const EdgeInsets.all(12),
-          child: Column(
-            children: [
-              buildAnimatedSearchBar(),
-              const SizedBox(height: 10),
+        body: SafeArea(
+          child: Padding(
+            padding: const EdgeInsets.all(12),
+            child: Column(
+              children: [
+                const SizedBox(height: 10),
 
-              // ------------------ Filter Buttons ------------------
-              SizedBox(
-                height: 40,
-                child: SingleChildScrollView(
-                  scrollDirection: Axis.horizontal,
-                  child: Row(
-                    children: [
-                      buildFilterButton("Top 100", AniListService.getTopAnime),
-                      buildFilterButton(
-                        "Popular",
-                        AniListService.getPopularAnime,
-                      ),
-                      buildFilterButton(
-                        "Upcoming",
-                        AniListService.getUpcomingAnime,
-                      ),
-                      buildFilterButton(
-                        "Airing",
-                        AniListService.getAiringAnime,
-                      ),
-                      buildFilterButton("Movies", AniListService.getTopMovies),
-                    ],
+                // ------------------ Search Bar ------------------
+                buildAnimatedSearchBar(),
+                const SizedBox(height: 10),
+
+                // ------------------ Filter Buttons ------------------
+                SizedBox(
+                  height: 40,
+                  child: SingleChildScrollView(
+                    scrollDirection: Axis.horizontal,
+                    child: Row(
+                      children: [
+                        buildFilterButton(
+                          "Top 100",
+                          AniListService.getTopAnime,
+                        ),
+                        buildFilterButton(
+                          "Popular",
+                          AniListService.getPopularAnime,
+                        ),
+                        buildFilterButton(
+                          "Upcoming",
+                          AniListService.getUpcomingAnime,
+                        ),
+                        buildFilterButton(
+                          "Airing",
+                          AniListService.getAiringAnime,
+                        ),
+                        buildFilterButton(
+                          "Movies",
+                          AniListService.getTopMovies,
+                        ),
+                      ],
+                    ),
                   ),
                 ),
-              ),
 
-              const SizedBox(height: 10),
+                const SizedBox(height: 10),
 
-              // ------------------ List View ------------------
-              Expanded(
-                child: isLoading
-                    ? const AnimeListShimmer()
-                    : ListView.builder(
-                        itemCount: animeList.length,
-                        itemBuilder: (context, index) {
-                          final anime = animeList[index];
-                          return AnimeListCard(
-                            anime: anime,
-                            rank: selectedFilter == "Top 100"
-                                ? index + 1
-                                : null,
-                            onTap: () {
-                              Navigator.push(
-                                context,
-                                MaterialPageRoute(
-                                  builder: (context) =>
-                                      AnimeDetailScreen(anime: anime),
-                                ),
-                              );
-                            },
-                          );
-                        },
-                      ),
-              ),
-            ],
+                // ------------------ List View ------------------
+                Expanded(
+                  child: isLoading
+                      ? const AnimeListShimmer()
+                      : ListView.builder(
+                          itemCount: animeList.length,
+                          itemBuilder: (context, index) {
+                            final anime = animeList[index];
+                            return AnimeListCard(
+                              anime: anime,
+                              rank: selectedFilter == "Top 100"
+                                  ? index + 1
+                                  : null,
+                              onTap: () {
+                                Navigator.push(
+                                  context,
+                                  MaterialPageRoute(
+                                    builder: (context) =>
+                                        AnimeDetailScreen(anime: anime),
+                                  ),
+                                );
+                              },
+                            );
+                          },
+                        ),
+                ),
+              ],
+            ),
           ),
         ),
       ),
@@ -349,10 +347,8 @@ class AnimeListCard extends StatelessWidget {
                       ),
                       const SizedBox(height: 8),
 
-                      // ⭐ Format + Year (Color Removed)
-                      // I removed the decoration: BoxDecoration(...)
+                      // Format + Year (Color Removed)
                       Container(
-                        // padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4), // Optional: reduce padding if no box
                         child: Row(
                           mainAxisSize: MainAxisSize.min,
                           children: [
