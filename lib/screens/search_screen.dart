@@ -5,6 +5,7 @@ import 'package:flutter/material.dart';
 import '../services/anilist_service.dart';
 import 'anime_detail_screen.dart';
 import 'dart:async';
+import 'package:shimmer/shimmer.dart';
 
 class SearchScreen extends StatefulWidget {
   const SearchScreen({super.key});
@@ -234,7 +235,7 @@ class _SearchScreenState extends State<SearchScreen> {
               // ------------------ List View ------------------
               Expanded(
                 child: isLoading
-                    ? const Center(child: CircularProgressIndicator())
+                    ? const AnimeListShimmer()
                     : ListView.builder(
                         itemCount: animeList.length,
                         itemBuilder: (context, index) {
@@ -272,7 +273,7 @@ class _SearchScreenState extends State<SearchScreen> {
   }
 }
 
-// ------------------ 2. EXTRACTED WIDGET (Removed Box Color) ------------------
+// ------------------ EXTRACTED WIDGET ------------------
 class AnimeListCard extends StatelessWidget {
   final dynamic anime;
   final int? rank;
@@ -457,6 +458,86 @@ class AnimeListCard extends StatelessWidget {
             ),
         ],
       ),
+    );
+  }
+}
+
+class AnimeListShimmer extends StatelessWidget {
+  const AnimeListShimmer({super.key});
+
+  @override
+  Widget build(BuildContext context) {
+    return ListView.builder(
+      itemCount: 8,
+      itemBuilder: (context, index) {
+        return Shimmer.fromColors(
+          baseColor: Colors.grey.shade300,
+          highlightColor: Colors.grey.shade100,
+          child: Container(
+            margin: const EdgeInsets.symmetric(vertical: 6),
+            padding: const EdgeInsets.all(10),
+            decoration: BoxDecoration(
+              color: Colors.white,
+              borderRadius: BorderRadius.circular(14),
+            ),
+            child: Row(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Container(
+                  width: 70,
+                  height: 95,
+                  decoration: BoxDecoration(
+                    color: Colors.grey.shade300,
+                    borderRadius: BorderRadius.circular(10),
+                  ),
+                ),
+                const SizedBox(width: 12),
+                Expanded(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Container(
+                        height: 16,
+                        width: double.infinity,
+                        decoration: BoxDecoration(
+                          color: Colors.grey.shade300,
+                          borderRadius: BorderRadius.circular(6),
+                        ),
+                      ),
+                      const SizedBox(height: 8),
+                      Container(
+                        height: 14,
+                        width: 120,
+                        decoration: BoxDecoration(
+                          color: Colors.grey.shade300,
+                          borderRadius: BorderRadius.circular(6),
+                        ),
+                      ),
+                      const SizedBox(height: 12),
+                      Row(
+                        children: List.generate(
+                          3,
+                          (_) => Padding(
+                            padding: const EdgeInsets.only(right: 10),
+                            child: Container(
+                              height: 14,
+                              width: 40,
+                              decoration: BoxDecoration(
+                                color: Colors.grey.shade300,
+                                borderRadius: BorderRadius.circular(6),
+                              ),
+                            ),
+                          ),
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+              ],
+            ),
+          ),
+        );
+      },
     );
   }
 }

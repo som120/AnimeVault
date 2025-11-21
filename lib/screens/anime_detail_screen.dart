@@ -1,23 +1,41 @@
 import 'package:ainme_vault/theme/app_theme.dart';
 import 'package:flutter/material.dart';
 import 'dart:ui';
+import 'package:shimmer/shimmer.dart';
 
-class AnimeDetailScreen extends StatelessWidget {
+class AnimeDetailScreen extends StatefulWidget {
   final Map<String, dynamic> anime;
 
   const AnimeDetailScreen({super.key, required this.anime});
 
+  @override
+  State<AnimeDetailScreen> createState() => _AnimeDetailScreenState();
+}
+
+class _AnimeDetailScreenState extends State<AnimeDetailScreen> {
+  bool isLoading = true;
+
+  @override
+  void initState() {
+    super.initState();
+    // Fake loading delay for smooth shimmer
+    Future.delayed(const Duration(milliseconds: 600), () {
+      if (!mounted) return;
+      setState(() => isLoading = false);
+    });
+  }
+
   Widget buildTopSection(BuildContext context, Map<String, dynamic> anime) {
-    final poster = anime['coverImage']?['large'];
-    final banner = anime['bannerImage'] ?? poster;
-    final title = anime['title']?['romaji'] ?? "Unknown";
-    final subtitle = anime['title']?['english'] ?? "";
+    final poster = widget.anime['coverImage']?['large'];
+    final banner = widget.anime['bannerImage'] ?? poster;
+    final title = widget.anime['title']?['romaji'] ?? "Unknown";
+    final subtitle = widget.anime['title']?['english'] ?? "";
 
     // Data preparation
-    final format = anime['format'] ?? "TV";
-    final status = anime['status']?.replaceAll("_", " ") ?? "N/A";
-    final episodes = anime['episodes']?.toString() ?? "?";
-    final year = anime['startDate']?['year']?.toString() ?? "----";
+    final format = widget.anime['format'] ?? "TV";
+    final status = widget.anime['status']?.replaceAll("_", " ") ?? "N/A";
+    final episodes = widget.anime['episodes']?.toString() ?? "?";
+    final year = widget.anime['startDate']?['year']?.toString() ?? "----";
 
     return Column(
       children: [
@@ -53,7 +71,9 @@ class AnimeDetailScreen extends StatelessWidget {
                             begin: Alignment.topCenter,
                             end: Alignment.bottomCenter,
                             colors: [
-                              Colors.black.withOpacity(0.2), // Light dark at top
+                              Colors.black.withOpacity(
+                                0.2,
+                              ), // Light dark at top
                               Colors.black.withOpacity(0.7), // Darker at bottom
                             ],
                             stops: const [0.0, 1.0],
@@ -61,7 +81,6 @@ class AnimeDetailScreen extends StatelessWidget {
                         ),
                       ),
                     ),
-                    
                   ],
                 ),
               ),
@@ -187,10 +206,9 @@ class AnimeDetailScreen extends StatelessWidget {
       ],
     );
   }
- 
 
   Widget buildGenres(Map<String, dynamic> anime) {
-    final genres = anime['genres'] ?? [];
+    final genres = widget.anime['genres'] ?? [];
     if (genres.isEmpty) return const SizedBox.shrink();
 
     return Padding(
@@ -209,7 +227,9 @@ class AnimeDetailScreen extends StatelessWidget {
               color: Color(0xFF714FDC),
             ),
             side: BorderSide.none,
-            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
+            shape: RoundedRectangleBorder(
+              borderRadius: BorderRadius.circular(20),
+            ),
           );
         }).toList(),
       ),
@@ -217,7 +237,8 @@ class AnimeDetailScreen extends StatelessWidget {
   }
 
   Widget buildDescription(Map<String, dynamic> anime) {
-    final description = anime['description'] ?? "No description available.";
+    final description =
+        widget.anime['description'] ?? "No description available.";
     return Padding(
       padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 12),
       child: Column(
@@ -244,29 +265,185 @@ class AnimeDetailScreen extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      backgroundColor: Colors.white, // Make sure background is white for shadow contrast
+      backgroundColor: Colors.white,
       body: Stack(
         children: [
-          SingleChildScrollView(
-            child: Column(
-              children: [
-                buildTopSection(context, anime),
-                buildGenres(anime),
-                buildDescription(anime),
-                const SizedBox(height: 50),
-              ],
+          if (isLoading)
+            const SingleChildScrollView(child: AnimeDetailShimmer())
+          else
+            SingleChildScrollView(
+              child: Column(
+                children: [
+                  buildTopSection(context, widget.anime),
+                  buildGenres(widget.anime),
+                  buildDescription(widget.anime),
+                ],
+              ),
             ),
-          ),
 
           // Back Button
           Positioned(
             top: 50,
             left: 16,
             child: CircleAvatar(
-              backgroundColor:  AppTheme.primary.withOpacity(0.5),
+              backgroundColor: AppTheme.primary.withOpacity(0.5),
               child: IconButton(
                 icon: const Icon(Icons.arrow_back, color: Colors.white),
                 onPressed: () => Navigator.pop(context),
+              ),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+class AnimeDetailShimmer extends StatelessWidget {
+  const AnimeDetailShimmer({super.key});
+
+  @override
+  Widget build(BuildContext context) {
+    return Shimmer.fromColors(
+      baseColor: Colors.grey.shade300,
+      highlightColor: Colors.grey.shade100,
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          // Banner shimmer
+          Container(
+            height: 260,
+            width: double.infinity,
+            decoration: BoxDecoration(
+              color: Colors.grey.shade300,
+              borderRadius: const BorderRadius.only(
+                bottomLeft: Radius.circular(35),
+                bottomRight: Radius.circular(35),
+              ),
+            ),
+          ),
+
+          const SizedBox(height: 140),
+
+          // Poster shimmer (center)
+          Center(
+            child: Container(
+              width: 210,
+              height: 300,
+              decoration: BoxDecoration(
+                color: Colors.grey.shade300,
+                borderRadius: BorderRadius.circular(16),
+              ),
+            ),
+          ),
+
+          const SizedBox(height: 20),
+
+          // Title
+          Padding(
+            padding: const EdgeInsets.symmetric(horizontal: 16),
+            child: Container(
+              height: 20,
+              width: 200,
+              decoration: BoxDecoration(
+                color: Colors.grey.shade300,
+                borderRadius: BorderRadius.circular(8),
+              ),
+            ),
+          ),
+
+          const SizedBox(height: 10),
+
+          // Subtitle
+          Padding(
+            padding: const EdgeInsets.symmetric(horizontal: 16),
+            child: Container(
+              height: 16,
+              width: 140,
+              decoration: BoxDecoration(
+                color: Colors.grey.shade300,
+                borderRadius: BorderRadius.circular(8),
+              ),
+            ),
+          ),
+
+          const SizedBox(height: 30),
+
+          // Info row
+          Padding(
+            padding: const EdgeInsets.symmetric(horizontal: 16),
+            child: Row(
+              mainAxisAlignment: MainAxisAlignment.spaceBetween,
+              children: List.generate(
+                4,
+                (i) => Column(
+                  children: [
+                    Container(
+                      height: 14,
+                      width: 40,
+                      color: Colors.grey.shade300,
+                    ),
+                    const SizedBox(height: 8),
+                    Container(
+                      height: 16,
+                      width: 50,
+                      color: Colors.grey.shade300,
+                    ),
+                  ],
+                ),
+              ),
+            ),
+          ),
+
+          const SizedBox(height: 25),
+
+          // Genres shimmer
+          Padding(
+            padding: const EdgeInsets.symmetric(horizontal: 16),
+            child: Wrap(
+              spacing: 10,
+              children: List.generate(
+                4,
+                (i) => Container(
+                  height: 28,
+                  width: 70,
+                  decoration: BoxDecoration(
+                    color: Colors.grey.shade300,
+                    borderRadius: BorderRadius.circular(20),
+                  ),
+                ),
+              ),
+            ),
+          ),
+
+          const SizedBox(height: 25),
+
+          // Description Title
+          Padding(
+            padding: const EdgeInsets.symmetric(horizontal: 16),
+            child: Container(
+              height: 20,
+              width: 120,
+              color: Colors.grey.shade300,
+            ),
+          ),
+
+          const SizedBox(height: 15),
+
+          // Description lines
+          Padding(
+            padding: const EdgeInsets.symmetric(horizontal: 16),
+            child: Column(
+              children: List.generate(
+                4,
+                (i) => Padding(
+                  padding: const EdgeInsets.only(bottom: 12),
+                  child: Container(
+                    height: 14,
+                    width: double.infinity,
+                    color: Colors.grey.shade300,
+                  ),
+                ),
               ),
             ),
           ),
