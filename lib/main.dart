@@ -3,6 +3,7 @@ import 'dart:ui';
 import 'package:ainme_vault/theme/app_theme.dart';
 import 'package:flutter/material.dart';
 import 'package:firebase_core/firebase_core.dart';
+import 'package:flutter/services.dart';
 import 'firebase_options.dart';
 
 // Screens
@@ -96,87 +97,96 @@ class _MainScreenState extends State<MainScreen> {
 
   @override
   Widget build(BuildContext context) {
-    return Scaffold(
-      backgroundColor: Colors.grey[100],
+    return AnnotatedRegion<SystemUiOverlayStyle>(
+      value: const SystemUiOverlayStyle(
+        statusBarColor: Colors.transparent,
+        statusBarIconBrightness: Brightness.dark, // black icons
+        statusBarBrightness: Brightness.light, // iOS
+      ),
+      child: Scaffold(
+        backgroundColor: Colors.grey[100],
 
-      body: Stack(
-        children: [
-          // Main Screens
-          Positioned.fill(
-            child: IndexedStack(index: _currentIndex, children: _screens),
-          ),
-
-          // Bottom progressive fade blur
-          Positioned(
-            left: 0,
-            right: 0,
-            bottom: 0,
-            height: 80,
-            child: IgnorePointer(
-              ignoring: true, // allows touches to pass through
-              child: Container(
-                decoration: const BoxDecoration(
-                  gradient: LinearGradient(
-                    colors: [
-                      Colors.transparent,
-                      Colors.white12,
-                      Colors.white60, // subtle fade
-                      Colors.white, // full fade under nav bar
-                    ],
-                    begin: Alignment.topCenter,
-                    end: Alignment.bottomCenter,
-                    stops: [0.0, 0.3, 0.7, 1.0],
-                  ),
-                ),
-              ),
+        body: Stack(
+          children: [
+            // Main Screens
+            Positioned.fill(
+              child: IndexedStack(index: _currentIndex, children: _screens),
             ),
-          ),
 
-          // Floating Rounded Nav Bar
-          Positioned(
-            left: 20,
-            right: 20,
-            bottom: 20,
-            child: ClipRRect(
-              borderRadius: BorderRadius.circular(40),
-              child: BackdropFilter(
-                filter: ImageFilter.blur(sigmaX: 25, sigmaY: 25),
+            // Bottom progressive fade blur
+            Positioned(
+              left: 0,
+              right: 0,
+              bottom: 0,
+              height: 80,
+              child: IgnorePointer(
+                ignoring: true, // allows touches to pass through
                 child: Container(
-                  decoration: BoxDecoration(
-                    color: Colors.white.withOpacity(0.18), // transparent glass
-                    borderRadius: BorderRadius.circular(40),
-                    border: Border.all(
-                      color: Colors.white.withOpacity(0.5), // glass border
-                      width: 1.2,
+                  decoration: const BoxDecoration(
+                    gradient: LinearGradient(
+                      colors: [
+                        Colors.transparent,
+                        Colors.white12,
+                        Colors.white60, // subtle fade
+                        Colors.white, // full fade under nav bar
+                      ],
+                      begin: Alignment.topCenter,
+                      end: Alignment.bottomCenter,
+                      stops: [0.0, 0.3, 0.7, 1.0],
                     ),
-                    boxShadow: [
-                      BoxShadow(
-                        color: const Color(
-                          0xFF714FDC,
-                        ).withOpacity(0.2), // purple glow
-                        blurRadius: 25,
-                        spreadRadius: 1,
-                      ),
-                    ],
-                  ),
-                  padding: const EdgeInsets.symmetric(
-                    vertical: 12,
-                    horizontal: 12,
-                  ),
-
-                  child: Row(
-                    mainAxisAlignment: MainAxisAlignment.spaceAround,
-                    children: [
-                      navItem(Icons.home_rounded, "Home", 0),
-                      navItem(Icons.search_rounded, "Search", 1),
-                      navItem(Icons.person_rounded, "Profile", 2),
-                    ],
                   ),
                 ),
               ),
             ),
-          ),
-        ],
+
+            // Floating Rounded Nav Bar
+            Positioned(
+              left: 20,
+              right: 20,
+              bottom: 20,
+              child: ClipRRect(
+                borderRadius: BorderRadius.circular(40),
+                child: BackdropFilter(
+                  filter: ImageFilter.blur(sigmaX: 25, sigmaY: 25),
+                  child: Container(
+                    decoration: BoxDecoration(
+                      color: Colors.white.withOpacity(
+                        0.18,
+                      ), // transparent glass
+                      borderRadius: BorderRadius.circular(40),
+                      border: Border.all(
+                        color: Colors.white.withOpacity(0.5), // glass border
+                        width: 1.2,
+                      ),
+                      boxShadow: [
+                        BoxShadow(
+                          color: const Color(
+                            0xFF714FDC,
+                          ).withOpacity(0.2), // purple glow
+                          blurRadius: 25,
+                          spreadRadius: 1,
+                        ),
+                      ],
+                    ),
+                    padding: const EdgeInsets.symmetric(
+                      vertical: 12,
+                      horizontal: 12,
+                    ),
+
+                    child: Row(
+                      mainAxisAlignment: MainAxisAlignment.spaceAround,
+                      children: [
+                        navItem(Icons.home_rounded, "Home", 0),
+                        navItem(Icons.search_rounded, "Search", 1),
+                        navItem(Icons.person_rounded, "Profile", 2),
+                      ],
+                    ),
+                  ),
+                ),
+              ),
+            ),
+          ],
+        ),
       ),
     );
   }
