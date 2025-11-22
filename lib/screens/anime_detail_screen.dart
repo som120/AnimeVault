@@ -1,5 +1,6 @@
 import 'package:ainme_vault/theme/app_theme.dart';
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'dart:ui';
 import 'package:shimmer/shimmer.dart';
 
@@ -13,16 +14,56 @@ class AnimeDetailScreen extends StatefulWidget {
 }
 
 class _AnimeDetailScreenState extends State<AnimeDetailScreen> {
+  final ScrollController _scrollController = ScrollController();
+  bool isDarkStatusBar = true; // banner visible at start
   bool isLoading = true;
 
   @override
   void initState() {
     super.initState();
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      _setDarkStatusBar(); // white icons immediately
+    });
     // Fake loading delay for smooth shimmer
     Future.delayed(const Duration(milliseconds: 600), () {
       if (!mounted) return;
       setState(() => isLoading = false);
     });
+    // Listen to scroll
+    _scrollController.addListener(_handleScroll);
+  }
+
+  void _handleScroll() {
+    // If scrolled more than 100px → switch to light icons
+    if (_scrollController.offset > 100 && isDarkStatusBar == true) {
+      setState(() => isDarkStatusBar = false);
+      _setLightStatusBar(); // black icons
+    }
+    // If near top → white icons
+    else if (_scrollController.offset <= 100 && isDarkStatusBar == false) {
+      setState(() => isDarkStatusBar = true);
+      _setDarkStatusBar(); // white icons
+    }
+  }
+
+  void _setDarkStatusBar() {
+    SystemChrome.setSystemUIOverlayStyle(
+      const SystemUiOverlayStyle(
+        statusBarColor: Colors.transparent,
+        statusBarIconBrightness: Brightness.light, // white icons
+        statusBarBrightness: Brightness.dark,
+      ),
+    );
+  }
+
+  void _setLightStatusBar() {
+    SystemChrome.setSystemUIOverlayStyle(
+      const SystemUiOverlayStyle(
+        statusBarColor: Colors.transparent,
+        statusBarIconBrightness: Brightness.dark, // black icons
+        statusBarBrightness: Brightness.light,
+      ),
+    );
   }
 
   Widget buildTopSection(BuildContext context, Map<String, dynamic> anime) {
@@ -272,6 +313,7 @@ class _AnimeDetailScreenState extends State<AnimeDetailScreen> {
             const SingleChildScrollView(child: AnimeDetailShimmer())
           else
             SingleChildScrollView(
+              controller: _scrollController,
               child: Column(
                 children: [
                   buildTopSection(context, widget.anime),
@@ -296,6 +338,12 @@ class _AnimeDetailScreenState extends State<AnimeDetailScreen> {
         ],
       ),
     );
+  }
+
+  @override
+  void dispose() {
+    _scrollController.dispose();
+    super.dispose();
   }
 }
 
