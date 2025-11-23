@@ -17,6 +17,7 @@ class _AnimeDetailScreenState extends State<AnimeDetailScreen> {
   final ScrollController _scrollController = ScrollController();
   bool isDarkStatusBar = true; // banner visible at start
   bool isLoading = true;
+  bool isDescriptionExpanded = false;
 
   @override
   void initState() {
@@ -279,9 +280,24 @@ class _AnimeDetailScreenState extends State<AnimeDetailScreen> {
 
   Widget buildDescription(Map<String, dynamic> anime) {
     final description =
-        widget.anime['description'] ?? "No description available.";
-    return Padding(
-      padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 12),
+        widget.anime['description']?.replaceAll(RegExp(r'<[^>]*>'), '') ??
+        "No description available.";
+    final isLong = description.length > 200;
+
+    return Container(
+      margin: const EdgeInsets.symmetric(horizontal: 20, vertical: 12),
+      padding: const EdgeInsets.all(16),
+      decoration: BoxDecoration(
+        color: Colors.white,
+        borderRadius: BorderRadius.circular(20),
+        boxShadow: [
+          BoxShadow(
+            color: Colors.black.withOpacity(0.15),
+            blurRadius: 10,
+            offset: const Offset(0, 4),
+          ),
+        ],
+      ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
@@ -290,14 +306,62 @@ class _AnimeDetailScreenState extends State<AnimeDetailScreen> {
             style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
           ),
           const SizedBox(height: 8),
-          Text(
-            description.replaceAll(RegExp(r'<[^>]*>'), ''), // Remove HTML tags
-            style: TextStyle(
-              fontSize: 15,
-              color: Colors.grey.shade700,
-              height: 1.5,
+          AnimatedCrossFade(
+            firstChild: Text(
+              description,
+              maxLines: 5,
+              overflow: TextOverflow.ellipsis,
+              style: TextStyle(
+                fontSize: 15,
+                color: Colors.grey.shade700,
+                height: 1.5,
+              ),
             ),
+            secondChild: Text(
+              description,
+              style: TextStyle(
+                fontSize: 15,
+                color: Colors.grey.shade700,
+                height: 1.5,
+              ),
+            ),
+            crossFadeState: isDescriptionExpanded
+                ? CrossFadeState.showSecond
+                : CrossFadeState.showFirst,
+            duration: const Duration(milliseconds: 300),
           ),
+          if (isLong)
+            GestureDetector(
+              onTap: () {
+                setState(() {
+                  isDescriptionExpanded = !isDescriptionExpanded;
+                });
+              },
+              child: Padding(
+                padding: const EdgeInsets.only(top: 12.0),
+                child: Row(
+                  mainAxisAlignment: MainAxisAlignment.center,
+                  children: [
+                    Text(
+                      isDescriptionExpanded ? "View Less" : "View More",
+                      style: const TextStyle(
+                        color: Color(0xFF714FDC),
+                        fontWeight: FontWeight.bold,
+                        fontSize: 14,
+                      ),
+                    ),
+                    const SizedBox(width: 4),
+                    Icon(
+                      isDescriptionExpanded
+                          ? Icons.keyboard_arrow_up
+                          : Icons.keyboard_arrow_down,
+                      color: const Color(0xFF714FDC),
+                      size: 18,
+                    ),
+                  ],
+                ),
+              ),
+            ),
         ],
       ),
     );
