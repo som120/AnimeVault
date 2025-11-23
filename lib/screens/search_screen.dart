@@ -548,31 +548,79 @@ class AnimeListCard extends StatelessWidget {
               ],
             ),
           ),
+
           if (rank != null)
             Positioned(
               top: 6,
               left: 0,
-              child: Container(
-                padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
-                decoration: BoxDecoration(
-                  color: rank == 1
-                      ? Colors.amber[600]
-                      : rank == 2
-                      ? Colors.grey[500]
-                      : rank == 3
-                      ? Colors.brown[400]
-                      : Colors.indigo,
-                  borderRadius: BorderRadius.circular(6),
-                ),
-                child: Text(
-                  "#$rank",
-                  style: const TextStyle(
-                    color: Colors.white,
-                    fontWeight: FontWeight.w700,
-                    fontSize: 12,
-                  ),
-                ),
-              ),
+              child: rank! <= 3
+                  ? Stack(
+                      children: [
+                        Positioned.fill(
+                          child: Shimmer.fromColors(
+                            baseColor: rank == 1
+                                ? Colors.amber[600]!
+                                : rank == 2
+                                ? Colors.grey[500]!
+                                : rank == 3
+                                ? Colors.brown[400]!
+                                : Colors.indigo,
+                            highlightColor: rank == 1
+                                ? Colors.amber[100]!
+                                : rank == 2
+                                ? Colors.grey[200]!
+                                : rank == 3
+                                ? Colors.brown[200]!
+                                : Colors.indigo.shade100,
+                            period: const Duration(milliseconds: 1500),
+                            child: Container(
+                              decoration: BoxDecoration(
+                                color: Colors.white,
+                                borderRadius: BorderRadius.circular(6),
+                              ),
+                            ),
+                          ),
+                        ),
+                        Container(
+                          padding: const EdgeInsets.symmetric(
+                            horizontal: 8,
+                            vertical: 3,
+                          ),
+                          child: Text(
+                            "#$rank",
+                            style: const TextStyle(
+                              color: Colors.white,
+                              fontWeight: FontWeight.w700,
+                              fontSize: 12,
+                            ),
+                          ),
+                        ),
+                      ],
+                    )
+                  : Container(
+                      padding: const EdgeInsets.symmetric(
+                        horizontal: 8,
+                        vertical: 3,
+                      ),
+                      decoration: BoxDecoration(
+                        color: rank == 1
+                            ? Colors.amber[600]
+                            : rank == 2
+                            ? Colors.grey[500]
+                            : rank == 3
+                            ? Colors.brown[400]
+                            : Colors.indigo,
+                        borderRadius: BorderRadius.circular(6),
+                      ),
+                      child: Text(
+                        "#$rank",
+                        style: const TextStyle(
+                          color: Colors.white,
+                          fontWeight: FontWeight.w700,
+                          fontSize: 12,
+                        ),
+                      ),
+                    ),
             ),
         ],
       ),

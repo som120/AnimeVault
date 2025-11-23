@@ -22,6 +22,9 @@ class AniListService {
           description(asHtml: false)
           episodes
           averageScore
+          popularity
+          favourites
+          rankings { rank type allTime }
           status
           bannerImage
           startDate { year }
@@ -41,6 +44,9 @@ class AniListService {
           description(asHtml: false)
           episodes
           averageScore
+          popularity
+          favourites
+          rankings { rank type allTime }
           status
           bannerImage
           startDate { year }
@@ -60,6 +66,9 @@ class AniListService {
           description(asHtml: false)
           episodes
           averageScore
+          popularity
+          favourites
+          rankings { rank type allTime }
           status
           bannerImage
           startDate { year }
@@ -79,6 +88,9 @@ class AniListService {
           description(asHtml: false)
           episodes
           averageScore
+          popularity
+          favourites
+          rankings { rank type allTime }
           status
           bannerImage
           startDate { year }
@@ -98,6 +110,9 @@ class AniListService {
           description(asHtml: false)
           episodes
           averageScore
+          popularity
+          favourites
+          rankings { rank type allTime }
           status
           bannerImage
           startDate { year }
@@ -117,6 +132,9 @@ class AniListService {
           description(asHtml: false)
           episodes
           averageScore
+          popularity
+          favourites
+          rankings { rank type allTime }
           status
           bannerImage
           startDate { year }

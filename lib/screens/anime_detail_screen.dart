@@ -249,6 +249,114 @@ class _AnimeDetailScreenState extends State<AnimeDetailScreen> {
     );
   }
 
+  Widget buildStatsCard(Map<String, dynamic> anime) {
+    final score = anime['averageScore']?.toString() ?? "N/A";
+    final popularity = anime['popularity'] != null
+        ? _formatNumber(anime['popularity'])
+        : "N/A";
+
+    // Try to find "Rated" rank (all time)
+    String rank = "N/A";
+
+    if (anime['status'] != 'NOT_YET_RELEASED') {
+      final rankings = anime['rankings'] as List?;
+      if (rankings != null) {
+        final rated = rankings.firstWhere(
+          (r) => r['type'] == 'RATED' && r['allTime'] == true,
+          orElse: () => null,
+        );
+        if (rated != null) {
+          rank = "#${rated['rank']}";
+        } else {
+          // Fallback to favourites if no rank found
+          final favs = anime['favourites'];
+          if (favs != null) {
+            rank = _formatNumber(favs); // Show hearts count instead
+          }
+        }
+      }
+    }
+
+    return Container(
+      margin: const EdgeInsets.symmetric(horizontal: 20, vertical: 10),
+      padding: const EdgeInsets.symmetric(vertical: 12, horizontal: 8),
+      decoration: BoxDecoration(
+        color: Colors.white,
+        borderRadius: BorderRadius.circular(20),
+        boxShadow: [
+          BoxShadow(
+            color: Colors.black.withOpacity(0.12),
+            blurRadius: 12,
+            offset: const Offset(0, 4),
+          ),
+        ],
+      ),
+      child: Row(
+        mainAxisAlignment: MainAxisAlignment.spaceAround,
+        children: [
+          _buildStatItem(Icons.star_rounded, Colors.amber, "$score%", "Score"),
+          _buildStatItem(
+            Icons.favorite_rounded,
+            Colors.pinkAccent,
+            popularity,
+            "Popular",
+          ),
+          _buildStatItem(
+            Icons.emoji_events_rounded,
+            Colors.blueAccent,
+            rank,
+            "Rank",
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildStatItem(
+    IconData icon,
+    Color color,
+    String value,
+    String label,
+  ) {
+    return Row(
+      children: [
+        Icon(icon, color: color, size: 24),
+        const SizedBox(height: 6),
+        Text(
+          value,
+          style: const TextStyle(
+            fontSize: 14,
+            fontWeight: FontWeight.bold,
+            color: Colors.black87,
+          ),
+        ),
+        const SizedBox(height: 2),
+        Column(
+          children: [
+            Text(
+              label,
+              style: TextStyle(
+                fontSize: 12,
+                color: Colors.grey.shade600,
+                fontWeight: FontWeight.w500,
+              ),
+            ),
+          ],
+        ),
+      ],
+    );
+  }
+
+  String _formatNumber(int number) {
+    if (number >= 1000000) {
+      return "${(number / 1000000).toStringAsFixed(1)}M";
+    }
+    if (number >= 1000) {
+      return "${(number / 1000).toStringAsFixed(1)}k";
+    }
+    return number.toString();
+  }
+
   Widget buildGenres(Map<String, dynamic> anime) {
     final genres = widget.anime['genres'] ?? [];
     if (genres.isEmpty) return const SizedBox.shrink();
@@ -381,6 +489,7 @@ class _AnimeDetailScreenState extends State<AnimeDetailScreen> {
               child: Column(
                 children: [
                   buildTopSection(context, widget.anime),
+                  buildStatsCard(widget.anime),
                   buildGenres(widget.anime),
                   buildDescription(widget.anime),
                 ],
