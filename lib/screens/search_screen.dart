@@ -1,5 +1,4 @@
 import 'package:ainme_vault/main.dart';
-import 'package:ainme_vault/theme/app_theme.dart';
 import 'package:ainme_vault/utils/transitions.dart';
 import 'package:flutter/material.dart';
 import '../services/anilist_service.dart';
@@ -29,9 +28,12 @@ class _SearchScreenState extends State<SearchScreen> {
   @override
   void initState() {
     super.initState();
-    _loadSearchHistory();
-    // Initial load
-    _fetchAnimeByCategory("Top 100", AniListService.getTopAnime);
+    _init();
+  }
+
+  Future<void> _init() async {
+    await _loadSearchHistory(); // wait until history loads fully
+    await _fetchAnimeByCategory("Top 100", AniListService.getTopAnime);
   }
 
   Future<void> _loadSearchHistory() async {
@@ -82,6 +84,7 @@ class _SearchScreenState extends State<SearchScreen> {
   ) async {
     // Prevent unnecessary reloads
     if (selectedFilter == filterName &&
+        !isLoading &&
         animeList.isNotEmpty &&
         filterName != "Search") {
       return;
@@ -285,7 +288,6 @@ class _SearchScreenState extends State<SearchScreen> {
   // ------------------ BUILD ------------------
   @override
   Widget build(BuildContext context) {
-    final topPadding = MediaQuery.of(context).padding.top;
     return PopScope(
       canPop: false,
       onPopInvokedWithResult: (didPop, result) {
