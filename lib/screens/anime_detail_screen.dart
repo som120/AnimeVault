@@ -213,7 +213,7 @@ class _AnimeDetailScreenState extends State<AnimeDetailScreen> {
           ),
         ),
 
-        const SizedBox(height: 24),
+        const SizedBox(height: 10),
       ],
     );
   }
@@ -249,31 +249,160 @@ class _AnimeDetailScreenState extends State<AnimeDetailScreen> {
     );
   }
 
+  Widget buildStatsCard(Map<String, dynamic> anime) {
+    final score = anime['averageScore']?.toString() ?? "N/A";
+    final popularity = anime['popularity'] != null
+        ? _formatNumber(anime['popularity'])
+        : "N/A";
+
+    // Try to find "Rated" rank (all time)
+    String rank = "N/A";
+
+    if (anime['status'] != 'NOT_YET_RELEASED') {
+      final rankings = anime['rankings'] as List?;
+      if (rankings != null) {
+        final rated = rankings.firstWhere(
+          (r) => r['type'] == 'RATED' && r['allTime'] == true,
+          orElse: () => null,
+        );
+        if (rated != null) {
+          rank = "#${rated['rank']}";
+        } else {
+          // Fallback to favourites if no rank found
+          final favs = anime['favourites'];
+          if (favs != null) {
+            rank = _formatNumber(favs); // Show hearts count instead
+          }
+        }
+      }
+    }
+
+    return Container(
+      margin: const EdgeInsets.symmetric(horizontal: 20, vertical: 10),
+      padding: const EdgeInsets.symmetric(vertical: 10, horizontal: 8),
+      decoration: BoxDecoration(
+        color: Colors.white,
+        borderRadius: BorderRadius.circular(20),
+        boxShadow: [
+          BoxShadow(
+            color: Colors.black.withOpacity(0.12),
+            blurRadius: 12,
+            offset: const Offset(0, 4),
+          ),
+        ],
+      ),
+      child: Row(
+        mainAxisAlignment: MainAxisAlignment.spaceAround,
+        children: [
+          _buildStatItem(Icons.star_rounded, Colors.amber, "$score%", "Score"),
+          _buildStatItem(
+            Icons.favorite_rounded,
+            Colors.pinkAccent,
+            popularity,
+            "Popular",
+          ),
+          _buildStatItem(
+            Icons.emoji_events_rounded,
+            Colors.blueAccent,
+            rank,
+            "Rank",
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildStatItem(
+    IconData icon,
+    Color color,
+    String value,
+    String label,
+  ) {
+    return Column(
+      mainAxisSize: MainAxisSize.min,
+      children: [
+        Row(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Icon(icon, color: color, size: 22),
+            const SizedBox(width: 6),
+            Text(
+              value,
+              style: const TextStyle(
+                fontSize: 15,
+                fontWeight: FontWeight.bold,
+                color: Colors.black87,
+              ),
+            ),
+          ],
+        ),
+
+        const SizedBox(height: 4),
+
+        Text(
+          label,
+          style: TextStyle(
+            fontSize: 12,
+            color: Colors.grey.shade600,
+            fontWeight: FontWeight.w500,
+          ),
+        ),
+      ],
+    );
+  }
+
+  String _formatNumber(int number) {
+    if (number >= 1000000) {
+      return "${(number / 1000000).toStringAsFixed(1)}M";
+    }
+    if (number >= 1000) {
+      return "${(number / 1000).toStringAsFixed(1)}k";
+    }
+    return number.toString();
+  }
+
   Widget buildGenres(Map<String, dynamic> anime) {
-    final genres = widget.anime['genres'] ?? [];
+    final genres = anime['genres'] ?? [];
     if (genres.isEmpty) return const SizedBox.shrink();
 
     return Padding(
-      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
-      child: Wrap(
-        alignment: WrapAlignment.center,
-        spacing: 8,
-        runSpacing: 8,
-        children: genres.map<Widget>((genre) {
-          return Chip(
-            label: Text(genre),
-            backgroundColor: const Color(0xFF714FDC).withOpacity(0.05),
-            labelStyle: const TextStyle(
-              fontSize: 12,
-              fontWeight: FontWeight.w600,
-              color: Color(0xFF714FDC),
-            ),
-            side: BorderSide.none,
-            shape: RoundedRectangleBorder(
-              borderRadius: BorderRadius.circular(20),
-            ),
-          );
-        }).toList(),
+      padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 12),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          const Text(
+            "Genres",
+            style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
+          ),
+
+          const SizedBox(height: 10),
+
+          Wrap(
+            alignment: WrapAlignment.start,
+            spacing: 10,
+            runSpacing: 10,
+            children: genres.map<Widget>((genre) {
+              return Container(
+                padding: const EdgeInsets.symmetric(
+                  horizontal: 14,
+                  vertical: 8,
+                ),
+                decoration: BoxDecoration(
+                  color: const Color(0xFF714FDC).withOpacity(0.10),
+                  borderRadius: BorderRadius.circular(20),
+                ),
+                child: Text(
+                  genre,
+                  style: const TextStyle(
+                    fontSize: 13,
+                    fontWeight: FontWeight.w600,
+                    color: Color(0xFF714FDC),
+                  ),
+                ),
+              );
+            }).toList(),
+          ),
+        ],
       ),
     );
   }
@@ -381,6 +510,7 @@ class _AnimeDetailScreenState extends State<AnimeDetailScreen> {
               child: Column(
                 children: [
                   buildTopSection(context, widget.anime),
+                  buildStatsCard(widget.anime),
                   buildGenres(widget.anime),
                   buildDescription(widget.anime),
                 ],
