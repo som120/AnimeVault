@@ -213,7 +213,7 @@ class _AnimeDetailScreenState extends State<AnimeDetailScreen> {
           ),
         ),
 
-        const SizedBox(height: 24),
+        const SizedBox(height: 10),
       ],
     );
   }
@@ -279,7 +279,7 @@ class _AnimeDetailScreenState extends State<AnimeDetailScreen> {
 
     return Container(
       margin: const EdgeInsets.symmetric(horizontal: 20, vertical: 10),
-      padding: const EdgeInsets.symmetric(vertical: 12, horizontal: 8),
+      padding: const EdgeInsets.symmetric(vertical: 10, horizontal: 8),
       decoration: BoxDecoration(
         color: Colors.white,
         borderRadius: BorderRadius.circular(20),
@@ -318,30 +318,34 @@ class _AnimeDetailScreenState extends State<AnimeDetailScreen> {
     String value,
     String label,
   ) {
-    return Row(
+    return Column(
+      mainAxisSize: MainAxisSize.min,
       children: [
-        Icon(icon, color: color, size: 24),
-        const SizedBox(height: 6),
-        Text(
-          value,
-          style: const TextStyle(
-            fontSize: 14,
-            fontWeight: FontWeight.bold,
-            color: Colors.black87,
-          ),
-        ),
-        const SizedBox(height: 2),
-        Column(
+        Row(
+          mainAxisSize: MainAxisSize.min,
           children: [
+            Icon(icon, color: color, size: 22),
+            const SizedBox(width: 6),
             Text(
-              label,
-              style: TextStyle(
-                fontSize: 12,
-                color: Colors.grey.shade600,
-                fontWeight: FontWeight.w500,
+              value,
+              style: const TextStyle(
+                fontSize: 15,
+                fontWeight: FontWeight.bold,
+                color: Colors.black87,
               ),
             ),
           ],
+        ),
+
+        const SizedBox(height: 4),
+
+        Text(
+          label,
+          style: TextStyle(
+            fontSize: 12,
+            color: Colors.grey.shade600,
+            fontWeight: FontWeight.w500,
+          ),
         ),
       ],
     );
@@ -358,30 +362,47 @@ class _AnimeDetailScreenState extends State<AnimeDetailScreen> {
   }
 
   Widget buildGenres(Map<String, dynamic> anime) {
-    final genres = widget.anime['genres'] ?? [];
+    final genres = anime['genres'] ?? [];
     if (genres.isEmpty) return const SizedBox.shrink();
 
     return Padding(
-      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
-      child: Wrap(
-        alignment: WrapAlignment.center,
-        spacing: 8,
-        runSpacing: 8,
-        children: genres.map<Widget>((genre) {
-          return Chip(
-            label: Text(genre),
-            backgroundColor: const Color(0xFF714FDC).withOpacity(0.05),
-            labelStyle: const TextStyle(
-              fontSize: 12,
-              fontWeight: FontWeight.w600,
-              color: Color(0xFF714FDC),
-            ),
-            side: BorderSide.none,
-            shape: RoundedRectangleBorder(
-              borderRadius: BorderRadius.circular(20),
-            ),
-          );
-        }).toList(),
+      padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 12),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          const Text(
+            "Genres",
+            style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
+          ),
+
+          const SizedBox(height: 10),
+
+          Wrap(
+            alignment: WrapAlignment.start,
+            spacing: 10,
+            runSpacing: 10,
+            children: genres.map<Widget>((genre) {
+              return Container(
+                padding: const EdgeInsets.symmetric(
+                  horizontal: 14,
+                  vertical: 8,
+                ),
+                decoration: BoxDecoration(
+                  color: const Color(0xFF714FDC).withOpacity(0.10),
+                  borderRadius: BorderRadius.circular(20),
+                ),
+                child: Text(
+                  genre,
+                  style: const TextStyle(
+                    fontSize: 13,
+                    fontWeight: FontWeight.w600,
+                    color: Color(0xFF714FDC),
+                  ),
+                ),
+              );
+            }).toList(),
+          ),
+        ],
       ),
     );
   }
