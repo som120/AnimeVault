@@ -1,8 +1,11 @@
+import 'package:ainme_vault/services/anilist_service.dart';
+import 'package:ainme_vault/screens/character_detail_screen.dart';
 import 'package:ainme_vault/theme/app_theme.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'dart:ui';
 import 'package:shimmer/shimmer.dart';
+import 'package:url_launcher/url_launcher.dart';
 
 class AnimeDetailScreen extends StatefulWidget {
   final Map<String, dynamic> anime;
@@ -18,6 +21,7 @@ class _AnimeDetailScreenState extends State<AnimeDetailScreen> {
   bool isDarkStatusBar = true; // banner visible at start
   bool isLoading = true;
   bool isDescriptionExpanded = false;
+  int selectedTab = 0; // 0: Information, 1: Characters, 2: Relations
 
   @override
   void initState() {
@@ -25,13 +29,30 @@ class _AnimeDetailScreenState extends State<AnimeDetailScreen> {
     WidgetsBinding.instance.addPostFrameCallback((_) {
       _setDarkStatusBar(); // white icons immediately
     });
-    // Fake loading delay for smooth shimmer
-    Future.delayed(const Duration(milliseconds: 600), () {
-      if (!mounted) return;
-      setState(() => isLoading = false);
-    });
+
+    _fetchAnimeDetails();
+
     // Listen to scroll
     _scrollController.addListener(_handleScroll);
+  }
+
+  Future<void> _fetchAnimeDetails() async {
+    final id = widget.anime['id'];
+    if (id == null) {
+      setState(() => isLoading = false);
+      return;
+    }
+
+    final details = await AniListService.getAnimeDetails(id);
+    if (mounted) {
+      setState(() {
+        if (details != null) {
+          // Merge details into existing anime map
+          widget.anime.addAll(details);
+        }
+        isLoading = false;
+      });
+    }
   }
 
   void _handleScroll() {
@@ -407,6 +428,492 @@ class _AnimeDetailScreenState extends State<AnimeDetailScreen> {
     );
   }
 
+  Widget buildTabsContainer(Map<String, dynamic> anime) {
+    return Column(
+      children: [
+        // Tab Buttons
+        Container(
+          margin: const EdgeInsets.symmetric(horizontal: 20),
+          padding: const EdgeInsets.all(4),
+          decoration: BoxDecoration(
+            color: Colors.grey.shade200,
+            borderRadius: BorderRadius.circular(25),
+          ),
+          child: Row(
+            children: [
+              _buildTabButton("Information", 0),
+              _buildTabButton("Characters", 1),
+              _buildTabButton("Relations", 2),
+            ],
+          ),
+        ),
+        const SizedBox(height: 20),
+
+        // Tab Content
+        AnimatedSwitcher(
+          duration: const Duration(milliseconds: 300),
+          child: _buildTabContent(anime),
+        ),
+      ],
+    );
+  }
+
+  Widget _buildTabButton(String label, int index) {
+    final isSelected = selectedTab == index;
+    return Expanded(
+      child: GestureDetector(
+        onTap: () => setState(() => selectedTab = index),
+        child: Container(
+          padding: const EdgeInsets.symmetric(vertical: 10),
+          decoration: BoxDecoration(
+            color: isSelected ? Colors.white : Colors.transparent,
+            borderRadius: BorderRadius.circular(20),
+            boxShadow: isSelected
+                ? [
+                    BoxShadow(
+                      color: Colors.black.withOpacity(0.1),
+                      blurRadius: 4,
+                      offset: const Offset(0, 2),
+                    ),
+                  ]
+                : null,
+          ),
+          child: Text(
+            label,
+            textAlign: TextAlign.center,
+            style: TextStyle(
+              fontSize: 13,
+              fontWeight: FontWeight.bold,
+              color: isSelected ? AppTheme.primary : Colors.grey.shade600,
+            ),
+          ),
+        ),
+      ),
+    );
+  }
+
+  Widget _buildTabContent(Map<String, dynamic> anime) {
+    switch (selectedTab) {
+      case 0:
+        return _buildInformationTab(anime);
+      case 1:
+        return _buildCharactersTab(anime);
+      case 2:
+        return _buildRelationsTab(anime);
+      default:
+        return const SizedBox.shrink();
+    }
+  }
+
+  Widget _buildInformationTab(Map<String, dynamic> anime) {
+    final studios = anime['studios']?['nodes'] as List?;
+    final trailer = anime['trailer'];
+    final studioName = (studios != null && studios.isNotEmpty)
+        ? studios.first['name']
+        : "Unknown";
+
+    // Date Formatting Helper
+    String formatDate(Map<String, dynamic>? date) {
+      if (date == null || date['year'] == null) return "?";
+      final year = date['year'];
+      final month = date['month'];
+      final day = date['day'];
+      if (month == null || day == null) return "$year";
+      const months = [
+        "Jan",
+        "Feb",
+        "Mar",
+        "Apr",
+        "May",
+        "Jun",
+        "Jul",
+        "Aug",
+        "Sep",
+        "Oct",
+        "Nov",
+        "Dec",
+      ];
+      return "${months[month - 1]} $day, $year";
+    }
+
+    final startDate = formatDate(anime['startDate']);
+    final endDate = formatDate(anime['endDate']);
+    final season = anime['season'] != null
+        ? "${anime['season']} ${anime['seasonYear'] ?? ''}"
+        : "Unknown";
+    final source = anime['source']?.replaceAll('_', ' ') ?? "Unknown";
+    final duration = anime['duration'] != null
+        ? "${anime['duration']} mins"
+        : "Unknown";
+
+    return Container(
+      margin: const EdgeInsets.symmetric(horizontal: 20),
+      padding: const EdgeInsets.all(20),
+      decoration: BoxDecoration(
+        color: Colors.white,
+        borderRadius: BorderRadius.circular(20),
+        boxShadow: [
+          BoxShadow(
+            color: Colors.black.withOpacity(0.05),
+            blurRadius: 10,
+            offset: const Offset(0, 4),
+          ),
+        ],
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          // Details Rows
+          _buildDetailRow("Start Date", startDate),
+          _buildDetailRow("End Date", endDate),
+          _buildDetailRow("Season", season),
+          _buildDetailRow("Source", source),
+          _buildDetailRow("Duration", duration),
+
+          const SizedBox(height: 10),
+          const Divider(),
+          const SizedBox(height: 10),
+
+          // Studio & Trailer
+          Row(
+            children: [
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      "Studio",
+                      style: TextStyle(
+                        fontSize: 12,
+                        color: Colors.grey.shade600,
+                        fontWeight: FontWeight.w500,
+                      ),
+                    ),
+                    const SizedBox(height: 4),
+                    Text(
+                      studioName,
+                      style: const TextStyle(
+                        fontSize: 15,
+                        fontWeight: FontWeight.bold,
+                        color: Colors.black87,
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+              if (trailer != null && trailer['site'] == 'youtube')
+                ElevatedButton.icon(
+                  onPressed: () async {
+                    final url = Uri.parse(
+                      'https://www.youtube.com/watch?v=${trailer['id']}',
+                    );
+                    if (await canLaunchUrl(url)) {
+                      await launchUrl(
+                        url,
+                        mode: LaunchMode.externalApplication,
+                      );
+                    }
+                  },
+                  icon: const Icon(Icons.play_arrow_rounded, size: 18),
+                  label: const Text("Trailer"),
+                  style: ElevatedButton.styleFrom(
+                    backgroundColor: Colors.red.shade50,
+                    foregroundColor: Colors.red,
+                    elevation: 0,
+                    shape: RoundedRectangleBorder(
+                      borderRadius: BorderRadius.circular(12),
+                    ),
+                  ),
+                ),
+            ],
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildDetailRow(String label, String value) {
+    return Padding(
+      padding: const EdgeInsets.only(bottom: 12),
+      child: Row(
+        mainAxisAlignment: MainAxisAlignment.spaceBetween,
+        children: [
+          Text(
+            label,
+            style: TextStyle(
+              fontSize: 14,
+              color: Colors.grey.shade600,
+              fontWeight: FontWeight.w500,
+            ),
+          ),
+          Text(
+            value,
+            style: const TextStyle(
+              fontSize: 14,
+              fontWeight: FontWeight.w600,
+              color: Colors.black87,
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildCharactersTab(Map<String, dynamic> anime) {
+    final characters = anime['characters']?['nodes'] as List?;
+    if (characters == null || characters.isEmpty) {
+      return const Center(child: Text("No characters found"));
+    }
+
+    return SizedBox(
+      height: 140,
+      child: ListView.separated(
+        padding: const EdgeInsets.symmetric(horizontal: 20),
+        scrollDirection: Axis.horizontal,
+        itemCount: characters.length,
+        separatorBuilder: (context, index) => const SizedBox(width: 14),
+        itemBuilder: (context, index) {
+          final char = characters[index];
+          final name = char['name']?['full'] ?? "Unknown";
+          final image = char['image']?['medium'];
+          final id = char['id'];
+
+          return GestureDetector(
+            onTap: () {
+              if (id != null) {
+                Navigator.push(
+                  context,
+                  MaterialPageRoute(
+                    builder: (context) => CharacterDetailScreen(
+                      characterId: id,
+                      placeholderName: name,
+                      placeholderImage: image,
+                    ),
+                  ),
+                );
+              }
+            },
+            child: SizedBox(
+              width: 90,
+              child: Column(
+                children: [
+                  ClipRRect(
+                    borderRadius: BorderRadius.circular(45), // Circle
+                    child: image != null
+                        ? Image.network(
+                            image,
+                            width: 80,
+                            height: 80,
+                            fit: BoxFit.cover,
+                          )
+                        : Container(
+                            width: 80,
+                            height: 80,
+                            color: Colors.grey[300],
+                            child: const Icon(Icons.person),
+                          ),
+                  ),
+                  const SizedBox(height: 8),
+                  Text(
+                    name,
+                    textAlign: TextAlign.center,
+                    maxLines: 2,
+                    overflow: TextOverflow.ellipsis,
+                    style: const TextStyle(
+                      fontSize: 12,
+                      fontWeight: FontWeight.w600,
+                    ),
+                  ),
+                ],
+              ),
+            ),
+          );
+        },
+      ),
+    );
+  }
+
+  Widget _buildRelationsTab(Map<String, dynamic> anime) {
+    final relations = anime['relations']?['edges'] as List?;
+    if (relations == null || relations.isEmpty) {
+      return const Center(child: Text("No relations found"));
+    }
+
+    // Filter out invalid nodes
+    final validRelations = relations
+        .where((edge) => edge['node'] != null)
+        .toList();
+    if (validRelations.isEmpty) {
+      return const Center(child: Text("No relations found"));
+    }
+
+    return SizedBox(
+      height: 160,
+      child: ListView.separated(
+        padding: const EdgeInsets.symmetric(horizontal: 20),
+        scrollDirection: Axis.horizontal,
+        itemCount: validRelations.length,
+        separatorBuilder: (context, index) => const SizedBox(width: 14),
+        itemBuilder: (context, index) {
+          final edge = validRelations[index];
+          final node = edge['node'];
+          final relationType =
+              edge['relationType']?.replaceAll('_', ' ') ?? 'RELATED';
+
+          final title =
+              node['title']?['romaji'] ??
+              node['title']?['english'] ??
+              'Unknown';
+          final image =
+              node['coverImage']?['large'] ?? node['coverImage']?['medium'];
+
+          return GestureDetector(
+            onTap: () {
+              Navigator.push(
+                context,
+                MaterialPageRoute(
+                  builder: (context) => AnimeDetailScreen(anime: node),
+                ),
+              );
+            },
+            child: SizedBox(
+              width: 70,
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  ClipRRect(
+                    borderRadius: BorderRadius.circular(10),
+                    child: image != null
+                        ? Image.network(
+                            image,
+                            width: 70,
+                            height: 95,
+                            fit: BoxFit.cover,
+                          )
+                        : Container(
+                            width: 70,
+                            height: 95,
+                            color: Colors.grey[300],
+                          ),
+                  ),
+                  const SizedBox(height: 6),
+                  Text(
+                    relationType,
+                    style: TextStyle(
+                      fontSize: 10,
+                      fontWeight: FontWeight.bold,
+                      color: AppTheme.primary,
+                      letterSpacing: 0.5,
+                    ),
+                    maxLines: 1,
+                    overflow: TextOverflow.ellipsis,
+                  ),
+                  Text(
+                    title,
+                    style: const TextStyle(
+                      fontSize: 12,
+                      fontWeight: FontWeight.w600,
+                    ),
+                    maxLines: 2,
+                    overflow: TextOverflow.ellipsis,
+                  ),
+                ],
+              ),
+            ),
+          );
+        },
+      ),
+    );
+  }
+
+  Widget buildRecommendations(Map<String, dynamic> anime) {
+    final recommendations = anime['recommendations']?['nodes'] as List?;
+    if (recommendations == null || recommendations.isEmpty) {
+      return const SizedBox.shrink();
+    }
+
+    final validRecs = recommendations
+        .where((node) => node['mediaRecommendation'] != null)
+        .toList();
+
+    if (validRecs.isEmpty) return const SizedBox.shrink();
+
+    return Padding(
+      padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 20),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          const Text(
+            "Recommendations",
+            style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
+          ),
+          const SizedBox(height: 12),
+          SizedBox(
+            height: 160,
+            child: ListView.separated(
+              scrollDirection: Axis.horizontal,
+              itemCount: validRecs.length,
+              separatorBuilder: (context, index) => const SizedBox(width: 14),
+              itemBuilder: (context, index) {
+                final rec = validRecs[index]['mediaRecommendation'];
+                final title =
+                    rec['title']?['romaji'] ??
+                    rec['title']?['english'] ??
+                    'Unknown';
+                final image =
+                    rec['coverImage']?['large'] ?? rec['coverImage']?['medium'];
+
+                return GestureDetector(
+                  onTap: () {
+                    Navigator.push(
+                      context,
+                      MaterialPageRoute(
+                        builder: (context) => AnimeDetailScreen(anime: rec),
+                      ),
+                    );
+                  },
+                  child: SizedBox(
+                    width: 100,
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        ClipRRect(
+                          borderRadius: BorderRadius.circular(12),
+                          child: image != null
+                              ? Image.network(
+                                  image,
+                                  width: 100,
+                                  height: 130,
+                                  fit: BoxFit.cover,
+                                )
+                              : Container(
+                                  width: 100,
+                                  height: 130,
+                                  color: Colors.grey[300],
+                                ),
+                        ),
+                        const SizedBox(height: 6),
+                        Text(
+                          title,
+                          style: const TextStyle(
+                            fontSize: 12,
+                            fontWeight: FontWeight.w600,
+                          ),
+                          maxLines: 1,
+                          overflow: TextOverflow.ellipsis,
+                        ),
+                      ],
+                    ),
+                  ),
+                );
+              },
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
   Widget buildDescription(Map<String, dynamic> anime) {
     final description =
         widget.anime['description']?.replaceAll(RegExp(r'<[^>]*>'), '') ??
@@ -513,6 +1020,9 @@ class _AnimeDetailScreenState extends State<AnimeDetailScreen> {
                   buildStatsCard(widget.anime),
                   buildGenres(widget.anime),
                   buildDescription(widget.anime),
+                  const SizedBox(height: 10),
+                  buildTabsContainer(widget.anime),
+                  buildRecommendations(widget.anime),
                 ],
               ),
             ),
@@ -610,34 +1120,6 @@ class AnimeDetailShimmer extends StatelessWidget {
           ),
 
           const SizedBox(height: 30),
-
-          // Info row
-          Padding(
-            padding: const EdgeInsets.symmetric(horizontal: 16),
-            child: Row(
-              mainAxisAlignment: MainAxisAlignment.spaceBetween,
-              children: List.generate(
-                4,
-                (i) => Column(
-                  children: [
-                    Container(
-                      height: 14,
-                      width: 40,
-                      color: Colors.grey.shade300,
-                    ),
-                    const SizedBox(height: 8),
-                    Container(
-                      height: 16,
-                      width: 50,
-                      color: Colors.grey.shade300,
-                    ),
-                  ],
-                ),
-              ),
-            ),
-          ),
-
-          const SizedBox(height: 25),
 
           // Genres shimmer
           Padding(

@@ -150,6 +150,88 @@ class AniListService {
     }
   ''';
 
+  static const String mediaDetailQuery = r'''
+    query ($id: Int) {
+      Media(id: $id) {
+        id
+        title { romaji english }
+        format
+        genres
+        description(asHtml: false)
+        episodes
+        averageScore
+        popularity
+        favourites
+        rankings { rank type allTime }
+        status
+        bannerImage
+        startDate { year month day }
+        endDate { year month day }
+        season
+        seasonYear
+        source
+        duration
+        coverImage { medium large }
+        studios(isMain: true) { nodes { name } }
+        trailer { id site thumbnail }
+        characters(sort: [ROLE, RELEVANCE], perPage: 10) {
+          nodes {
+            id
+            name { full }
+            image { medium }
+          }
+        }
+        recommendations(sort: RATING_DESC, perPage: 10) {
+          nodes {
+            mediaRecommendation {
+              id
+              title { romaji english }
+              format
+              status
+              coverImage { medium large }
+            }
+          }
+        }
+        relations {
+          edges {
+            relationType
+            node {
+              id
+              title { romaji english }
+              format
+              status
+              coverImage { medium large }
+            }
+          }
+        }
+      }
+    }
+  ''';
+
+  static const String characterQuery = r'''
+    query ($id: Int) {
+      Character(id: $id) {
+        id
+        name { full native alternative }
+        image { large }
+        description(asHtml: false)
+        gender
+        dateOfBirth { year month day }
+        age
+        bloodType
+        siteUrl
+        favourites
+        media(sort: POPULARITY_DESC, type: ANIME, perPage: 10) {
+          nodes {
+            id
+            title { romaji }
+            coverImage { medium }
+          }
+        }
+      }
+    }
+  ''';
+
   // ------------ GENERIC FETCH FUNCTION ------------
   static Future<List<dynamic>> _fetch(
     String query, {
@@ -231,4 +313,48 @@ class AniListService {
 
   static Future<List<dynamic>> getTopMovies() async =>
       _fetchMultiplePages(topMoviesQuery, perPage: 50, pages: 2);
+
+  static Future<Map<String, dynamic>?> getCharacterDetails(int id) async {
+    final opts = QueryOptions(
+      document: gql(characterQuery),
+      variables: {'id': id},
+      fetchPolicy: FetchPolicy.networkOnly,
+    );
+
+    try {
+      final result = await client().query(opts);
+
+      if (result.hasException) {
+        debugPrint('AniList API Error: ${result.exception}');
+        return null;
+      }
+
+      return result.data?['Character'];
+    } catch (e, st) {
+      debugPrint('AniList fetch failed: $e\n$st');
+      return null;
+    }
+  }
+
+  static Future<Map<String, dynamic>?> getAnimeDetails(int id) async {
+    final opts = QueryOptions(
+      document: gql(mediaDetailQuery),
+      variables: {'id': id},
+      fetchPolicy: FetchPolicy.networkOnly,
+    );
+
+    try {
+      final result = await client().query(opts);
+
+      if (result.hasException) {
+        debugPrint('AniList API Error: ${result.exception}');
+        return null;
+      }
+
+      return result.data?['Media'];
+    } catch (e, st) {
+      debugPrint('AniList fetch failed: $e\n$st');
+      return null;
+    }
+  }
 }
