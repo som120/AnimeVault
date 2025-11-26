@@ -6,6 +6,8 @@ import 'package:firebase_core/firebase_core.dart';
 import 'package:flutter/services.dart';
 import 'firebase_options.dart';
 
+import 'package:flutter_displaymode/flutter_displaymode.dart';
+
 // Screens
 import 'screens/home_screen.dart';
 import 'screens/search_screen.dart';
@@ -15,6 +17,13 @@ import 'screens/profile_screen.dart';
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
   await Firebase.initializeApp(options: DefaultFirebaseOptions.currentPlatform);
+
+  try {
+    await FlutterDisplayMode.setHighRefreshRate();
+  } catch (e) {
+    // Ignore errors if platform doesn't support it
+  }
+
   runApp(const AnimeVaultApp());
 }
 

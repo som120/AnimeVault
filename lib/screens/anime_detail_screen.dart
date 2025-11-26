@@ -6,6 +6,7 @@ import 'package:flutter/services.dart';
 import 'dart:ui';
 import 'package:shimmer/shimmer.dart';
 import 'package:url_launcher/url_launcher.dart';
+import 'package:transparent_image/transparent_image.dart';
 
 class AnimeDetailScreen extends StatefulWidget {
   final Map<String, dynamic> anime;
@@ -564,69 +565,147 @@ class _AnimeDetailScreenState extends State<AnimeDetailScreen> {
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           // Details Rows
+          _buildDetailRow("Duration", duration),
           _buildDetailRow("Start Date", startDate),
           _buildDetailRow("End Date", endDate),
           _buildDetailRow("Season", season),
           _buildDetailRow("Source", source),
-          _buildDetailRow("Duration", duration),
 
           const SizedBox(height: 10),
           const Divider(),
           const SizedBox(height: 10),
 
-          // Studio & Trailer
-          Row(
-            children: [
-              Expanded(
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Text(
-                      "Studio",
-                      style: TextStyle(
-                        fontSize: 12,
-                        color: Colors.grey.shade600,
-                        fontWeight: FontWeight.w500,
-                      ),
-                    ),
-                    const SizedBox(height: 4),
-                    Text(
-                      studioName,
-                      style: const TextStyle(
-                        fontSize: 15,
-                        fontWeight: FontWeight.bold,
-                        color: Colors.black87,
-                      ),
-                    ),
-                  ],
-                ),
+          // Studio
+          Text(
+            "Studio",
+            style: TextStyle(
+              fontSize: 14,
+              color: Colors.grey.shade600,
+              fontWeight: FontWeight.w500,
+            ),
+          ),
+          const SizedBox(height: 4),
+          Text(
+            studioName,
+            style: const TextStyle(
+              fontSize: 15,
+              fontWeight: FontWeight.bold,
+              color: Colors.black87,
+            ),
+          ),
+
+          // Trailer Section
+          if (trailer != null && trailer['site'] == 'youtube') ...[
+            const SizedBox(height: 20),
+            Text(
+              "Trailer",
+              style: TextStyle(
+                fontSize: 14,
+                color: Colors.grey.shade600,
+                fontWeight: FontWeight.w500,
               ),
-              if (trailer != null && trailer['site'] == 'youtube')
-                ElevatedButton.icon(
-                  onPressed: () async {
+            ),
+            const SizedBox(height: 10),
+
+            // Trailer Banner
+            Center(
+              child: SizedBox(
+                width: 260,
+                child: GestureDetector(
+                  onTap: () async {
                     final url = Uri.parse(
                       'https://www.youtube.com/watch?v=${trailer['id']}',
                     );
-                    if (await canLaunchUrl(url)) {
-                      await launchUrl(
+                    try {
+                      if (!await launchUrl(
                         url,
                         mode: LaunchMode.externalApplication,
-                      );
+                      )) {
+                        throw 'Could not launch $url';
+                      }
+                    } catch (e) {
+                      debugPrint("Error launching URL: $e");
                     }
                   },
-                  icon: const Icon(Icons.play_arrow_rounded, size: 18),
-                  label: const Text("Trailer"),
-                  style: ElevatedButton.styleFrom(
-                    backgroundColor: Colors.red.shade50,
-                    foregroundColor: Colors.red,
-                    elevation: 0,
-                    shape: RoundedRectangleBorder(
-                      borderRadius: BorderRadius.circular(12),
+                  child: ClipRRect(
+                    borderRadius: BorderRadius.circular(12),
+                    child: Stack(
+                      alignment: Alignment.center,
+                      children: [
+                        Image.network(
+                          'https://img.youtube.com/vi/${trailer['id']}/hqdefault.jpg',
+                          width: double.infinity,
+                          height: 135,
+                          fit: BoxFit.cover,
+                          errorBuilder: (context, error, stackTrace) =>
+                              Container(
+                                height: 135,
+                                color: Colors.grey[300],
+                                child: const Center(
+                                  child: Icon(
+                                    Icons.broken_image,
+                                    color: Colors.grey,
+                                  ),
+                                ),
+                              ),
+                        ),
+                        // Play Button Overlay
+                        Container(
+                          padding: const EdgeInsets.all(12),
+                          decoration: BoxDecoration(
+                            color: Colors.black.withOpacity(0.6),
+                            shape: BoxShape.circle,
+                          ),
+                          child: const Icon(
+                            Icons.play_arrow_rounded,
+                            color: Colors.white,
+                            size: 32,
+                          ),
+                        ),
+                      ],
                     ),
                   ),
                 ),
-            ],
-          ),
+              ),
+            ),
+
+            const SizedBox(height: 12),
+
+            // Watch Trailer Button
+            Center(
+              child: ElevatedButton.icon(
+                onPressed: () async {
+                  final url = Uri.parse(
+                    'https://www.youtube.com/watch?v=${trailer['id']}',
+                  );
+                  try {
+                    if (!await launchUrl(
+                      url,
+                      mode: LaunchMode.externalApplication,
+                    )) {
+                      throw 'Could not launch $url';
+                    }
+                  } catch (e) {
+                    debugPrint("Error launching URL: $e");
+                  }
+                },
+                icon: const Icon(Icons.play_arrow_rounded, size: 18),
+                label: const Text("Trailer"),
+                style: ElevatedButton.styleFrom(
+                  backgroundColor: Colors.red.shade50,
+                  foregroundColor: Colors.red,
+                  elevation: 0,
+                  padding: const EdgeInsets.symmetric(
+                    vertical: 12,
+                    horizontal: 24,
+                  ),
+                  shape: RoundedRectangleBorder(
+                    borderRadius: BorderRadius.circular(12),
+                  ),
+                ),
+              ),
+            ),
+          ],
         ],
       ),
     );
@@ -666,7 +745,7 @@ class _AnimeDetailScreenState extends State<AnimeDetailScreen> {
     }
 
     return SizedBox(
-      height: 140,
+      height: 180, // Increased height
       child: ListView.separated(
         padding: const EdgeInsets.symmetric(horizontal: 20),
         scrollDirection: Axis.horizontal,
@@ -681,34 +760,47 @@ class _AnimeDetailScreenState extends State<AnimeDetailScreen> {
           return GestureDetector(
             onTap: () {
               if (id != null) {
-                Navigator.push(
-                  context,
-                  MaterialPageRoute(
-                    builder: (context) => CharacterDetailScreen(
-                      characterId: id,
-                      placeholderName: name,
-                      placeholderImage: image,
-                    ),
+                showModalBottomSheet(
+                  context: context,
+                  isScrollControlled: true,
+                  backgroundColor: Colors.transparent,
+                  builder: (context) => DraggableScrollableSheet(
+                    initialChildSize: 0.6,
+                    minChildSize: 0.4,
+                    maxChildSize: 1.0,
+                    builder: (context, scrollController) {
+                      return ClipRRect(
+                        borderRadius: const BorderRadius.vertical(
+                          top: Radius.circular(20),
+                        ),
+                        child: CharacterDetailScreen(
+                          characterId: id,
+                          placeholderName: name,
+                          placeholderImage: image,
+                          scrollController: scrollController,
+                        ),
+                      );
+                    },
                   ),
                 );
               }
             },
             child: SizedBox(
-              width: 90,
+              width: 130, // Increased width
               child: Column(
                 children: [
                   ClipRRect(
-                    borderRadius: BorderRadius.circular(45), // Circle
+                    borderRadius: BorderRadius.circular(60), // Increased radius
                     child: image != null
                         ? Image.network(
                             image,
-                            width: 80,
-                            height: 80,
+                            width: 120, // Increased size
+                            height: 120, // Increased size
                             fit: BoxFit.cover,
                           )
                         : Container(
-                            width: 80,
-                            height: 80,
+                            width: 120, // Increased size
+                            height: 120, // Increased size
                             color: Colors.grey[300],
                             child: const Icon(Icons.person),
                           ),
@@ -748,7 +840,7 @@ class _AnimeDetailScreenState extends State<AnimeDetailScreen> {
     }
 
     return SizedBox(
-      height: 160,
+      height: 190,
       child: ListView.separated(
         padding: const EdgeInsets.symmetric(horizontal: 20),
         scrollDirection: Axis.horizontal,
@@ -777,25 +869,25 @@ class _AnimeDetailScreenState extends State<AnimeDetailScreen> {
               );
             },
             child: SizedBox(
-              width: 70,
+              width: 90,
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  ClipRRect(
-                    borderRadius: BorderRadius.circular(10),
-                    child: image != null
-                        ? Image.network(
-                            image,
-                            width: 70,
-                            height: 95,
-                            fit: BoxFit.cover,
-                          )
-                        : Container(
-                            width: 70,
-                            height: 95,
+                  image != null
+                      ? FadeInImageWidget(
+                          imageUrl: image,
+                          width: 90,
+                          height: 125,
+                        )
+                      : Container(
+                          width: 90,
+                          height: 125,
+                          decoration: BoxDecoration(
                             color: Colors.grey[300],
+                            borderRadius: BorderRadius.circular(10),
                           ),
-                  ),
+                          child: const Icon(Icons.image, color: Colors.grey),
+                        ),
                   const SizedBox(height: 6),
                   Text(
                     relationType,
@@ -834,6 +926,7 @@ class _AnimeDetailScreenState extends State<AnimeDetailScreen> {
 
     final validRecs = recommendations
         .where((node) => node['mediaRecommendation'] != null)
+        .take(20)
         .toList();
 
     if (validRecs.isEmpty) return const SizedBox.shrink();
@@ -847,51 +940,56 @@ class _AnimeDetailScreenState extends State<AnimeDetailScreen> {
             "Recommendations",
             style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
           ),
-          const SizedBox(height: 12),
+          const SizedBox(height: 15),
           SizedBox(
-            height: 160,
+            height: 190, // Reduced height
             child: ListView.separated(
               scrollDirection: Axis.horizontal,
               itemCount: validRecs.length,
               separatorBuilder: (context, index) => const SizedBox(width: 14),
               itemBuilder: (context, index) {
-                final rec = validRecs[index]['mediaRecommendation'];
+                final rec = validRecs[index];
+                final media = rec['mediaRecommendation'];
                 final title =
-                    rec['title']?['romaji'] ??
-                    rec['title']?['english'] ??
-                    'Unknown';
+                    media['title']?['romaji'] ??
+                    media['title']?['english'] ??
+                    "Unknown";
                 final image =
-                    rec['coverImage']?['large'] ?? rec['coverImage']?['medium'];
+                    media['coverImage']?['large'] ??
+                    media['coverImage']?['medium'];
 
                 return GestureDetector(
                   onTap: () {
                     Navigator.push(
                       context,
                       MaterialPageRoute(
-                        builder: (context) => AnimeDetailScreen(anime: rec),
+                        builder: (context) => AnimeDetailScreen(anime: media),
                       ),
                     );
                   },
                   child: SizedBox(
-                    width: 100,
+                    width: 110, // Reduced width
                     child: Column(
                       crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
-                        ClipRRect(
-                          borderRadius: BorderRadius.circular(12),
-                          child: image != null
-                              ? Image.network(
-                                  image,
-                                  width: 100,
-                                  height: 130,
-                                  fit: BoxFit.cover,
-                                )
-                              : Container(
-                                  width: 100,
-                                  height: 130,
+                        image != null
+                            ? FadeInImageWidget(
+                                imageUrl: image,
+                                width: 110,
+                                height: 155,
+                              )
+                            : Container(
+                                width: 110,
+                                height: 155,
+                                decoration: BoxDecoration(
                                   color: Colors.grey[300],
+                                  borderRadius: BorderRadius.circular(12),
                                 ),
-                        ),
+                                child: const Icon(
+                                  Icons.image,
+                                  color: Colors.grey,
+                                ),
+                              ),
                         const SizedBox(height: 6),
                         Text(
                           title,
@@ -1172,6 +1270,50 @@ class AnimeDetailShimmer extends StatelessWidget {
             ),
           ),
         ],
+      ),
+    );
+  }
+}
+
+class FadeInImageWidget extends StatelessWidget {
+  final String imageUrl;
+  final double width;
+  final double height;
+
+  const FadeInImageWidget({
+    super.key,
+    required this.imageUrl,
+    required this.width,
+    required this.height,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    return ClipRRect(
+      borderRadius: BorderRadius.circular(12),
+      child: Container(
+        width: width,
+        height: height,
+        color: Colors.grey[200],
+        child: FadeInImage(
+          placeholder: MemoryImage(kTransparentImage),
+          image: ResizeImage(
+            NetworkImage(imageUrl),
+            width: (width * 3).toInt(), // Optimize decoding size
+          ),
+          width: width,
+          height: height,
+          fit: BoxFit.cover,
+          fadeInDuration: const Duration(milliseconds: 250),
+          imageErrorBuilder: (context, error, stackTrace) {
+            return Container(
+              width: width,
+              height: height,
+              color: Colors.grey[300],
+              child: const Icon(Icons.broken_image, color: Colors.grey),
+            );
+          },
+        ),
       ),
     );
   }

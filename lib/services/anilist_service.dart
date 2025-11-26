@@ -181,7 +181,7 @@ class AniListService {
             image { medium }
           }
         }
-        recommendations(sort: RATING_DESC, perPage: 10) {
+        recommendations(sort: RATING_DESC, perPage: 25) {
           nodes {
             mediaRecommendation {
               id
