@@ -1,11 +1,12 @@
-import 'package:ainme_vault/main.dart';
-import 'package:ainme_vault/utils/transitions.dart';
+//import 'package:ainme_vault/main.dart';
+//import 'package:ainme_vault/utils/transitions.dart';
 import 'package:flutter/material.dart';
 import '../services/anilist_service.dart';
 import 'anime_detail_screen.dart';
 import 'dart:async';
 import 'package:shimmer/shimmer.dart';
 import 'package:shared_preferences/shared_preferences.dart';
+import 'package:transparent_image/transparent_image.dart';
 
 class SearchScreen extends StatefulWidget {
   const SearchScreen({super.key});
@@ -16,9 +17,12 @@ class SearchScreen extends StatefulWidget {
 
 class _SearchScreenState extends State<SearchScreen> {
   final TextEditingController _controller = TextEditingController();
+  final FocusNode _searchFocus = FocusNode();
   List animeList = [];
   bool isLoading = false;
   bool isFocused = false;
+  bool _isScrolled = false;
+  final ScrollController _scrollController = ScrollController();
   Timer? _debounce;
 
   String selectedFilter = "Top 100";
@@ -28,7 +32,35 @@ class _SearchScreenState extends State<SearchScreen> {
   @override
   void initState() {
     super.initState();
+    _searchFocus.addListener(_onFocusChange);
+    _scrollController.addListener(_onScroll);
+
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      _searchFocus.unfocus();
+      isFocused = false;
+      setState(() {});
+    });
+
     _init();
+  }
+
+  void _onFocusChange() {
+    if (_searchFocus.hasFocus) {
+      setState(() {
+        isFocused = true;
+      });
+    }
+  }
+
+  void _onScroll() {
+    if (_scrollController.hasClients) {
+      final scrolled = _scrollController.offset > 20;
+      if (scrolled != _isScrolled) {
+        setState(() {
+          _isScrolled = scrolled;
+        });
+      }
+    }
   }
 
   Future<void> _init() async {
@@ -96,7 +128,8 @@ class _SearchScreenState extends State<SearchScreen> {
       // Only clear search bar on filter change
       if (filterName != "Search") {
         _controller.clear();
-        FocusScope.of(context).unfocus(); // Unfocus when switching filters
+        FocusManager.instance.primaryFocus?.unfocus(); // Robust unfocus
+        _searchFocus.unfocus();
         isFocused = false;
       }
 
@@ -117,14 +150,23 @@ class _SearchScreenState extends State<SearchScreen> {
   }
 
   // ------------------ SEARCH FUNCTION ------------------
-  void searchAnime() {
+  // Called while typing (debounce) → DOES NOT close keyboard
+  void _performSearch(String text) {
+    if (text.isEmpty) return;
+
+    _addToHistory(text);
+    _fetchAnimeByCategory("Search", () => AniListService.searchAnime(text));
+  }
+
+  // Called when pressing the "search" button → closes keyboard
+  void searchAnimeSubmit() {
     final text = _controller.text.trim();
     if (text.isEmpty) return;
 
     _addToHistory(text);
     _fetchAnimeByCategory("Search", () => AniListService.searchAnime(text));
-    FocusScope.of(context).unfocus();
-    setState(() => isFocused = false);
+
+    FocusManager.instance.primaryFocus?.unfocus(); // ONLY HERE
   }
 
   // ------------------ UI HELPER ------------------
@@ -134,7 +176,13 @@ class _SearchScreenState extends State<SearchScreen> {
     return Padding(
       padding: const EdgeInsets.symmetric(horizontal: 6),
       child: GestureDetector(
-        onTap: () => _fetchAnimeByCategory(label, apiCall),
+        onTap: () {
+          FocusManager.instance.primaryFocus?.unfocus();
+          _searchFocus.unfocus();
+          isFocused = false;
+          setState(() {});
+          _fetchAnimeByCategory(label, apiCall);
+        },
         child: Container(
           padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 8),
           decoration: BoxDecoration(
@@ -157,7 +205,14 @@ class _SearchScreenState extends State<SearchScreen> {
     return AnimatedContainer(
       duration: const Duration(milliseconds: 280),
       curve: Curves.easeOut,
-      padding: const EdgeInsets.symmetric(horizontal: 18, vertical: 4),
+      transform: _isScrolled && !isFocused
+          ? Matrix4.diagonal3Values(0.95, 0.9, 1.0)
+          : Matrix4.identity(),
+      transformAlignment: Alignment.topCenter,
+      padding: EdgeInsets.symmetric(
+        horizontal: _isScrolled && !isFocused ? 12 : 18,
+        vertical: _isScrolled && !isFocused ? 0 : 4,
+      ),
       decoration: BoxDecoration(
         color: isFocused ? Colors.white : const Color(0xFFFFFFFF),
         borderRadius: BorderRadius.circular(isFocused ? 30 : 24),
@@ -172,39 +227,53 @@ class _SearchScreenState extends State<SearchScreen> {
       ),
       child: Row(
         children: [
-          Icon(
-            Icons.search,
-            size: 24,
-            color: isFocused ? const Color(0xFF714FDC) : Colors.grey[500],
+          GestureDetector(
+            onTap: () {
+              if (isFocused) {
+                FocusManager.instance.primaryFocus?.unfocus();
+                setState(() {
+                  isFocused = false;
+                  _controller.clear();
+                });
+                if (selectedFilter == "Search") {
+                  _fetchAnimeByCategory("Top 100", AniListService.getTopAnime);
+                }
+              }
+            },
+            child: Icon(
+              isFocused ? Icons.arrow_back : Icons.search,
+              size: 24,
+              color: isFocused ? const Color(0xFF714FDC) : Colors.grey[500],
+            ),
           ),
           const SizedBox(width: 12),
           Expanded(
-            child: FocusScope(
-              child: Focus(
-                onFocusChange: (hasFocus) =>
-                    setState(() => isFocused = hasFocus),
-                child: TextField(
-                  controller: _controller,
-                  onChanged: (value) {
-                    setState(() {}); // update clear icon
+            child: TextField(
+              focusNode: _searchFocus,
+              controller: _controller,
+              onChanged: (value) {
+                setState(() {}); // update clear icon
 
-                    if (_debounce?.isActive ?? false) _debounce!.cancel();
+                if (_debounce?.isActive ?? false) _debounce!.cancel();
 
-                    _debounce = Timer(const Duration(milliseconds: 600), () {
-                      if (!mounted) return;
-                      if (value.trim().isNotEmpty) {
-                        searchAnime();
-                      }
-                    });
-                  },
-                  onSubmitted: (_) => searchAnime(),
-                  textInputAction: TextInputAction.search,
-                  decoration: const InputDecoration(
-                    hintText: "Search anime...",
-                    hintStyle: TextStyle(color: Colors.grey, fontSize: 16),
-                    border: InputBorder.none,
-                  ),
-                ),
+                _debounce = Timer(const Duration(milliseconds: 600), () {
+                  if (!mounted) return;
+                  if (value.trim().isNotEmpty) {
+                    _performSearch(
+                      value.trim(),
+                    ); // ✔ alive search with keyboard open
+                  }
+                });
+              },
+
+              onSubmitted: (_) =>
+                  searchAnimeSubmit(), // ✔ closes keyboard only on submit
+
+              textInputAction: TextInputAction.search,
+              decoration: const InputDecoration(
+                hintText: "Search anime...",
+                hintStyle: TextStyle(color: Colors.grey, fontSize: 16),
+                border: InputBorder.none,
               ),
             ),
           ),
@@ -275,7 +344,9 @@ class _SearchScreenState extends State<SearchScreen> {
                 ),
                 onTap: () {
                   _controller.text = query;
-                  searchAnime();
+                  FocusManager.instance.primaryFocus?.unfocus();
+                  isFocused = false;
+                  searchAnimeSubmit();
                 },
               );
             },
@@ -288,83 +359,87 @@ class _SearchScreenState extends State<SearchScreen> {
   // ------------------ BUILD ------------------
   @override
   Widget build(BuildContext context) {
-    return PopScope(
-      canPop: false,
-      onPopInvokedWithResult: (didPop, result) {
-        if (!didPop) {
-          if (isFocused) {
-            FocusScope.of(context).unfocus();
-            setState(() => isFocused = false);
-          } else {
-            Navigator.pushReplacement(
-              context,
-              SlideRightRoute(page: const MainScreen()),
-            );
-          }
-        }
-      },
-      child: Scaffold(
-        body: SafeArea(
-          child: Padding(
-            padding: const EdgeInsets.all(12),
-            child: Column(
-              children: [
-                const SizedBox(height: 10),
+    return Scaffold(
+      body: SafeArea(
+        child: Padding(
+          padding: const EdgeInsets.all(12),
+          child: Column(
+            children: [
+              const SizedBox(height: 10),
 
-                // ------------------ Search Bar ------------------
-                buildAnimatedSearchBar(),
-                const SizedBox(height: 10),
+              // ------------------ Search Bar ------------------
+              buildAnimatedSearchBar(),
+              const SizedBox(height: 10),
 
-                // ------------------ Filter Buttons ------------------
-                SizedBox(
-                  height: 40,
-                  child: SingleChildScrollView(
-                    scrollDirection: Axis.horizontal,
-                    child: Row(
-                      children: [
-                        buildFilterButton(
-                          "Top 100",
-                          AniListService.getTopAnime,
-                        ),
-                        buildFilterButton(
-                          "Popular",
-                          AniListService.getPopularAnime,
-                        ),
-                        buildFilterButton(
-                          "Upcoming",
-                          AniListService.getUpcomingAnime,
-                        ),
-                        buildFilterButton(
-                          "Airing",
-                          AniListService.getAiringAnime,
-                        ),
-                        buildFilterButton(
-                          "Movies",
-                          AniListService.getTopMovies,
-                        ),
-                      ],
-                    ),
+              // ------------------ Filter Buttons ------------------
+              SizedBox(
+                height: 40,
+                child: SingleChildScrollView(
+                  scrollDirection: Axis.horizontal,
+                  child: Row(
+                    children: [
+                      buildFilterButton("Top 100", AniListService.getTopAnime),
+                      buildFilterButton(
+                        "Popular",
+                        AniListService.getPopularAnime,
+                      ),
+                      buildFilterButton(
+                        "Upcoming",
+                        AniListService.getUpcomingAnime,
+                      ),
+                      buildFilterButton(
+                        "Airing",
+                        AniListService.getAiringAnime,
+                      ),
+                      buildFilterButton("Movies", AniListService.getTopMovies),
+                    ],
                   ),
                 ),
+              ),
 
-                const SizedBox(height: 10),
+              const SizedBox(height: 10),
 
-                // ------------------ List View / History ------------------
-                Expanded(
-                  child: isFocused && _controller.text.isEmpty
-                      ? buildSearchHistory()
-                      : isLoading
-                      ? const AnimeListShimmer()
-                      : ListView.builder(
-                          itemCount: animeList.length,
-                          itemBuilder: (context, index) {
-                            final anime = animeList[index];
-                            return AnimeListCard(
+              // ------------------ List View / History ------------------
+              Expanded(
+                child: isFocused && _controller.text.isEmpty
+                    ? buildSearchHistory()
+                    : isLoading
+                    ? const AnimeListShimmer()
+                    : ListView.builder(
+                        controller: _scrollController,
+                        physics: const BouncingScrollPhysics(),
+                        keyboardDismissBehavior:
+                            ScrollViewKeyboardDismissBehavior.onDrag,
+                        cacheExtent: 100,
+                        itemCount: animeList.length,
+                        itemBuilder: (context, index) {
+                          final anime = animeList[index];
+                          return TweenAnimationBuilder<double>(
+                            duration: const Duration(milliseconds: 500),
+                            curve: Curves.easeOutBack,
+                            tween: Tween<double>(begin: 0.0, end: 1.0),
+                            builder: (context, value, child) {
+                              return Transform.translate(
+                                offset: Offset(0, 50 * (1 - value)),
+                                child: Transform.scale(
+                                  scale: 0.85 + (0.15 * value),
+                                  child: Opacity(
+                                    opacity: value.clamp(0.0, 1.0),
+                                    child: child,
+                                  ),
+                                ),
+                              );
+                            },
+                            child: AnimeListCard(
                               anime: anime,
                               rank: selectedFilter == "Top 100"
                                   ? index + 1
                                   : null,
                               onTap: () {
+                                FocusManager.instance.primaryFocus?.unfocus();
+                                _searchFocus.unfocus();
+                                isFocused = false;
+                                setState(() {});
                                 Navigator.push(
                                   context,
                                   MaterialPageRoute(
@@ -373,12 +448,12 @@ class _SearchScreenState extends State<SearchScreen> {
                                   ),
                                 );
                               },
-                            );
-                          },
-                        ),
-                ),
-              ],
-            ),
+                            ),
+                          );
+                        },
+                      ),
+              ),
+            ],
           ),
         ),
       ),
@@ -387,6 +462,9 @@ class _SearchScreenState extends State<SearchScreen> {
 
   @override
   void dispose() {
+    _searchFocus.removeListener(_onFocusChange);
+    _searchFocus.dispose();
+    _scrollController.dispose();
     _debounce?.cancel();
     _controller.dispose();
     super.dispose();
@@ -438,21 +516,7 @@ class AnimeListCard extends StatelessWidget {
             child: Row(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                ClipRRect(
-                  borderRadius: BorderRadius.circular(10),
-                  child: Image.network(
-                    imageUrl,
-                    width: 70,
-                    height: 95,
-                    fit: BoxFit.cover,
-                    errorBuilder: (ctx, err, stack) => Container(
-                      width: 70,
-                      height: 95,
-                      color: Colors.grey[300],
-                      child: const Icon(Icons.broken_image),
-                    ),
-                  ),
-                ),
+                FadeInImageWidget(imageUrl: imageUrl, width: 70, height: 95),
                 const SizedBox(width: 12),
                 Expanded(
                   child: Column(
@@ -704,6 +768,50 @@ class AnimeListShimmer extends StatelessWidget {
           ),
         );
       },
+    );
+  }
+}
+
+class FadeInImageWidget extends StatelessWidget {
+  final String imageUrl;
+  final double width;
+  final double height;
+
+  const FadeInImageWidget({
+    super.key,
+    required this.imageUrl,
+    required this.width,
+    required this.height,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    return ClipRRect(
+      borderRadius: BorderRadius.circular(10),
+      child: Container(
+        width: width,
+        height: height,
+        color: Colors.grey[200],
+        child: FadeInImage(
+          placeholder: MemoryImage(kTransparentImage),
+          image: ResizeImage(
+            NetworkImage(imageUrl),
+            width: (width * 3).toInt(), // Optimize decoding size
+          ),
+          width: width,
+          height: height,
+          fit: BoxFit.cover,
+          fadeInDuration: const Duration(milliseconds: 250),
+          imageErrorBuilder: (context, error, stackTrace) {
+            return Container(
+              width: width,
+              height: height,
+              color: Colors.grey[300],
+              child: const Icon(Icons.broken_image, color: Colors.grey),
+            );
+          },
+        ),
+      ),
     );
   }
 }

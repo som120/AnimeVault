@@ -13,12 +13,13 @@ class AniListService {
 
   // ---------------- QUERY CONSTANTS ----------------
   static const String searchQuery = r'''
-    query ($search: String) {
-      Page(perPage: 20) {
+     query ($search: String, $page: Int, $perPage: Int) {
+      Page(page: $page, perPage: $perPage) {
         media(search: $search, type: ANIME) {
           id
           title { romaji english }
           format
+          genres
           description(asHtml: false)
           episodes
           averageScore
@@ -35,12 +36,13 @@ class AniListService {
   ''';
 
   static const String topAnimeQuery = r'''
-    query {
-      Page(perPage: 100) {
+    query ($page: Int, $perPage: Int) {
+      Page(page: $page, perPage: $perPage) {
         media(sort: SCORE_DESC, type: ANIME) {
           id
           title { romaji english }
           format
+          genres
           description(asHtml: false)
           episodes
           averageScore
@@ -57,12 +59,13 @@ class AniListService {
   ''';
 
   static const String popularAnimeQuery = r'''
-    query {
-      Page(perPage: 100) {
+    query ($page: Int, $perPage: Int) {
+      Page(page: $page, perPage: $perPage) {
         media(sort: POPULARITY_DESC, type: ANIME) {
           id
           title { romaji english }
           format
+          genres
           description(asHtml: false)
           episodes
           averageScore
@@ -79,12 +82,13 @@ class AniListService {
   ''';
 
   static const String upcomingAnimeQuery = r'''
-    query {
-      Page(perPage: 100) {
+    query ($page: Int, $perPage: Int) {
+      Page(page: $page, perPage: $perPage) {
         media(sort: POPULARITY_DESC, type: ANIME, status: NOT_YET_RELEASED) {
           id
           title { romaji english }
           format
+          genres
           description(asHtml: false)
           episodes
           averageScore
@@ -101,12 +105,13 @@ class AniListService {
   ''';
 
   static const String airingAnimeQuery = r'''
-    query {
-      Page(perPage: 100) {
+    query ($page: Int, $perPage: Int) {
+      Page(page: $page, perPage: $perPage) {
         media(sort: TRENDING_DESC, type: ANIME, status: RELEASING) {
           id
           title { romaji english }
           format
+          genres
           description(asHtml: false)
           episodes
           averageScore
@@ -123,12 +128,13 @@ class AniListService {
   ''';
 
   static const String topMoviesQuery = r'''
-    query {
-      Page(perPage: 100) {
+    query ($page: Int, $perPage: Int) {
+      Page(page: $page, perPage: $perPage) {
         media(sort: SCORE_DESC, type: ANIME, format: MOVIE) {
           id
           title { romaji english }
           format
+          genres
           description(asHtml: false)
           episodes
           averageScore
@@ -144,43 +150,211 @@ class AniListService {
     }
   ''';
 
+  static const String mediaDetailQuery = r'''
+    query ($id: Int) {
+      Media(id: $id) {
+        id
+        title { romaji english }
+        format
+        genres
+        description(asHtml: false)
+        episodes
+        averageScore
+        popularity
+        favourites
+        rankings { rank type allTime }
+        status
+        bannerImage
+        startDate { year month day }
+        endDate { year month day }
+        season
+        seasonYear
+        source
+        duration
+        coverImage { medium large }
+        studios(isMain: true) { nodes { name } }
+        trailer { id site thumbnail }
+        characters(sort: [ROLE, RELEVANCE], perPage: 10) {
+          nodes {
+            id
+            name { full }
+            image { medium }
+          }
+        }
+        recommendations(sort: RATING_DESC, perPage: 25) {
+          nodes {
+            mediaRecommendation {
+              id
+              title { romaji english }
+              format
+              status
+              coverImage { medium large }
+            }
+          }
+        }
+        relations {
+          edges {
+            relationType
+            node {
+              id
+              title { romaji english }
+              format
+              status
+              coverImage { medium large }
+            }
+          }
+        }
+      }
+    }
+  ''';
+
+  static const String characterQuery = r'''
+    query ($id: Int) {
+      Character(id: $id) {
+        id
+        name { full native alternative }
+        image { large }
+        description(asHtml: false)
+        gender
+        dateOfBirth { year month day }
+        age
+        bloodType
+        siteUrl
+        favourites
+        media(sort: POPULARITY_DESC, type: ANIME, perPage: 10) {
+          nodes {
+            id
+            title { romaji }
+            coverImage { medium }
+          }
+        }
+      }
+    }
+  ''';
+
   // ------------ GENERIC FETCH FUNCTION ------------
-  static Future<List> _fetch(
+  static Future<List<dynamic>> _fetch(
     String query, {
     Map<String, dynamic>? variables,
+    FetchPolicy fetchPolicy = FetchPolicy.networkOnly,
   }) async {
-    final options = QueryOptions(
+    final opts = QueryOptions(
       document: gql(query),
       variables: variables ?? {},
-      fetchPolicy: FetchPolicy.networkOnly,
+      fetchPolicy: fetchPolicy,
     );
 
-    final result = await client().query(options);
+    try {
+      final result = await client().query(opts);
 
-    if (result.hasException) {
-      debugPrint('AniList API Error: ${result.exception}');
+      if (result.hasException) {
+        debugPrint('AniList API Error: ${result.exception}');
+        return [];
+      }
+
+      final page = result.data?['Page'];
+      if (page == null) return [];
+      final media = page['media'];
+      if (media == null) return [];
+      return List<dynamic>.from(media);
+    } catch (e, st) {
+      debugPrint('AniList fetch failed: $e\n$st');
       return [];
     }
+  }
 
-    // safe access with null checks
-    final page = result.data?['Page'];
-    if (page == null) return [];
-    final media = page['media'];
-    if (media == null) return [];
-    return List.from(media);
+  // ------------ MULTI-PAGE FETCH (merge pages) ------------
+
+  static Future<List<dynamic>> _fetchMultiplePages(
+    String query, {
+    int perPage = 50,
+    int pages = 2,
+    Map<String, dynamic>? otherVariables,
+  }) async {
+    final List<dynamic> combined = [];
+    for (var p = 1; p <= pages; p++) {
+      final vars = <String, dynamic>{'page': p, 'perPage': perPage};
+      if (otherVariables != null) vars.addAll(otherVariables);
+      final pageResult = await _fetch(
+        query,
+        variables: vars,
+        fetchPolicy: FetchPolicy.networkOnly,
+      );
+      if (pageResult.isEmpty) {
+        // If a page returns empty, break early
+        break;
+      }
+      combined.addAll(pageResult);
+    }
+    return combined;
   }
 
   // ------------ PUBLIC FUNCTIONS ------------
-  static Future<List> searchAnime(String name) async =>
-      _fetch(searchQuery, variables: {'search': name});
+  static Future<List<dynamic>> searchAnime(
+    String name, {
+    int page = 1,
+    int perPage = 50,
+  }) async => _fetch(
+    searchQuery,
+    variables: {'search': name, 'page': page, 'perPage': perPage},
+  );
 
-  static Future<List> getTopAnime() async => _fetch(topAnimeQuery);
+  static Future<List<dynamic>> getTopAnime() async =>
+      _fetchMultiplePages(topAnimeQuery, perPage: 50, pages: 2);
 
-  static Future<List> getPopularAnime() async => _fetch(popularAnimeQuery);
+  static Future<List<dynamic>> getPopularAnime() async =>
+      _fetchMultiplePages(popularAnimeQuery, perPage: 50, pages: 2);
 
-  static Future<List> getUpcomingAnime() async => _fetch(upcomingAnimeQuery);
+  static Future<List<dynamic>> getUpcomingAnime() async =>
+      _fetchMultiplePages(upcomingAnimeQuery, perPage: 50, pages: 2);
 
-  static Future<List> getAiringAnime() async => _fetch(airingAnimeQuery);
+  static Future<List<dynamic>> getAiringAnime() async =>
+      _fetchMultiplePages(airingAnimeQuery, perPage: 50, pages: 2);
 
-  static Future<List> getTopMovies() async => _fetch(topMoviesQuery);
+  static Future<List<dynamic>> getTopMovies() async =>
+      _fetchMultiplePages(topMoviesQuery, perPage: 50, pages: 2);
+
+  static Future<Map<String, dynamic>?> getCharacterDetails(int id) async {
+    final opts = QueryOptions(
+      document: gql(characterQuery),
+      variables: {'id': id},
+      fetchPolicy: FetchPolicy.networkOnly,
+    );
+
+    try {
+      final result = await client().query(opts);
+
+      if (result.hasException) {
+        debugPrint('AniList API Error: ${result.exception}');
+        return null;
+      }
+
+      return result.data?['Character'];
+    } catch (e, st) {
+      debugPrint('AniList fetch failed: $e\n$st');
+      return null;
+    }
+  }
+
+  static Future<Map<String, dynamic>?> getAnimeDetails(int id) async {
+    final opts = QueryOptions(
+      document: gql(mediaDetailQuery),
+      variables: {'id': id},
+      fetchPolicy: FetchPolicy.networkOnly,
+    );
+
+    try {
+      final result = await client().query(opts);
+
+      if (result.hasException) {
+        debugPrint('AniList API Error: ${result.exception}');
+        return null;
+      }
+
+      return result.data?['Media'];
+    } catch (e, st) {
+      debugPrint('AniList fetch failed: $e\n$st');
+      return null;
+    }
+  }
 }
