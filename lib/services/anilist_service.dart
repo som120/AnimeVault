@@ -174,11 +174,14 @@ class AniListService {
         coverImage { medium large }
         studios(isMain: true) { nodes { name } }
         trailer { id site thumbnail }
-        characters(sort: [ROLE, RELEVANCE], perPage: 10) {
-          nodes {
-            id
-            name { full }
-            image { medium }
+        characters(sort: [ROLE, RELEVANCE], perPage: 25) {
+          edges {
+            role
+            node {
+              id
+              name { full }
+              image { medium }
+            }
           }
         }
         recommendations(sort: RATING_DESC, perPage: 25) {
@@ -203,6 +206,14 @@ class AniListService {
               coverImage { medium large }
             }
           }
+        }
+        externalLinks {
+          id
+          url
+          site
+          type
+          icon
+          color
         }
       }
     }
