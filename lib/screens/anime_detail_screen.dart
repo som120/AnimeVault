@@ -57,14 +57,12 @@ class _AnimeDetailScreenState extends State<AnimeDetailScreen> {
   }
 
   void _handleScroll() {
-    // If scrolled more than 100px → switch to light icons
+    // Update status bar without setState to avoid rebuilds
     if (_scrollController.offset > 100 && isDarkStatusBar == true) {
-      setState(() => isDarkStatusBar = false);
+      isDarkStatusBar = false;
       _setLightStatusBar(); // black icons
-    }
-    // If near top → white icons
-    else if (_scrollController.offset <= 100 && isDarkStatusBar == false) {
-      setState(() => isDarkStatusBar = true);
+    } else if (_scrollController.offset <= 100 && isDarkStatusBar == false) {
+      isDarkStatusBar = true;
       _setDarkStatusBar(); // white icons
     }
   }
@@ -118,30 +116,17 @@ class _AnimeDetailScreenState extends State<AnimeDetailScreen> {
                 child: Stack(
                   fit: StackFit.expand,
                   children: [
+                    Image.network(banner, fit: BoxFit.cover, cacheWidth: 800),
                     Container(
                       decoration: BoxDecoration(
-                        image: DecorationImage(
-                          image: NetworkImage(banner),
-                          fit: BoxFit.cover,
-                        ),
-                      ),
-                    ),
-                    // 2. Blur + Linear Gradient Overlay
-                    BackdropFilter(
-                      filter: ImageFilter.blur(sigmaX: 1, sigmaY: 1),
-                      child: Container(
-                        decoration: BoxDecoration(
-                          gradient: LinearGradient(
-                            begin: Alignment.topCenter,
-                            end: Alignment.bottomCenter,
-                            colors: [
-                              Colors.black.withOpacity(
-                                0.2,
-                              ), // Light dark at top
-                              Colors.black.withOpacity(0.7), // Darker at bottom
-                            ],
-                            stops: const [0.0, 1.0],
-                          ),
+                        gradient: LinearGradient(
+                          begin: Alignment.topCenter,
+                          end: Alignment.bottomCenter,
+                          colors: [
+                            Colors.black.withOpacity(0.3),
+                            Colors.black.withOpacity(0.7),
+                          ],
+                          stops: const [0.0, 1.0],
                         ),
                       ),
                     ),
@@ -174,6 +159,8 @@ class _AnimeDetailScreenState extends State<AnimeDetailScreen> {
                       height: 300,
                       width: 210,
                       fit: BoxFit.cover,
+                      cacheWidth: 420,
+                      cacheHeight: 600,
                     ),
                   ),
                 ),
