@@ -1217,40 +1217,44 @@ class _AnimeDetailScreenState extends State<AnimeDetailScreen> {
   Widget build(BuildContext context) {
     return Scaffold(
       backgroundColor: Colors.white,
-      body: Stack(
-        children: [
-          if (isLoading)
-            const SingleChildScrollView(child: AnimeDetailShimmer())
-          else
-            SingleChildScrollView(
-              controller: _scrollController,
-              child: Column(
-                children: [
-                  buildTopSection(context, widget.anime),
-                  buildStatsCard(widget.anime),
-                  buildGenres(widget.anime),
-                  buildDescription(widget.anime),
-                  const SizedBox(height: 10),
-                  buildTabsContainer(widget.anime),
-                  _buildStreamingSites(widget.anime),
-                  buildRecommendations(widget.anime),
-                ],
+      body: AnimatedSwitcher(
+        duration: const Duration(milliseconds: 300),
+        child: Stack(
+          key: ValueKey(isLoading),
+          children: [
+            if (isLoading)
+              const SingleChildScrollView(child: AnimeDetailShimmer())
+            else
+              SingleChildScrollView(
+                controller: _scrollController,
+                child: Column(
+                  children: [
+                    buildTopSection(context, widget.anime),
+                    buildStatsCard(widget.anime),
+                    buildGenres(widget.anime),
+                    buildDescription(widget.anime),
+                    const SizedBox(height: 10),
+                    buildTabsContainer(widget.anime),
+                    _buildStreamingSites(widget.anime),
+                    buildRecommendations(widget.anime),
+                  ],
+                ),
               ),
-            ),
 
-          // Back Button
-          Positioned(
-            top: 50,
-            left: 16,
-            child: CircleAvatar(
-              backgroundColor: AppTheme.primary.withOpacity(0.5),
-              child: IconButton(
-                icon: const Icon(Icons.arrow_back, color: Colors.white),
-                onPressed: () => Navigator.pop(context),
+            // Back Button
+            Positioned(
+              top: 50,
+              left: 16,
+              child: CircleAvatar(
+                backgroundColor: AppTheme.primary.withOpacity(0.5),
+                child: IconButton(
+                  icon: const Icon(Icons.arrow_back, color: Colors.white),
+                  onPressed: () => Navigator.pop(context),
+                ),
               ),
             ),
-          ),
-        ],
+          ],
+        ),
       ),
     );
   }
@@ -1273,112 +1277,177 @@ class AnimeDetailShimmer extends StatelessWidget {
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          // Banner shimmer
-          Container(
-            height: 260,
-            width: double.infinity,
-            decoration: BoxDecoration(
-              color: Colors.grey.shade300,
-              borderRadius: const BorderRadius.only(
-                bottomLeft: Radius.circular(35),
-                bottomRight: Radius.circular(35),
+          // Banner + Poster Stack
+          Stack(
+            clipBehavior: Clip.none,
+            children: [
+              // Banner shimmer
+              Container(
+                height: 260,
+                width: double.infinity,
+                decoration: BoxDecoration(
+                  color: Colors.grey.shade300,
+                  borderRadius: const BorderRadius.only(
+                    bottomLeft: Radius.circular(30),
+                    bottomRight: Radius.circular(30),
+                  ),
+                ),
               ),
-            ),
+              // Poster shimmer (overlapping)
+              Positioned(
+                bottom: -170,
+                left: 0,
+                right: 0,
+                child: Center(
+                  child: Container(
+                    width: 210,
+                    height: 300,
+                    decoration: BoxDecoration(
+                      color: Colors.grey.shade300,
+                      borderRadius: BorderRadius.circular(16),
+                    ),
+                  ),
+                ),
+              ),
+            ],
           ),
 
-          const SizedBox(height: 140),
+          const SizedBox(height: 180),
 
-          // Poster shimmer (center)
-          Center(
-            child: Container(
-              width: 210,
-              height: 300,
-              decoration: BoxDecoration(
-                color: Colors.grey.shade300,
-                borderRadius: BorderRadius.circular(16),
-              ),
-            ),
-          ),
-
-          const SizedBox(height: 20),
           // Title
           Padding(
-            padding: const EdgeInsets.symmetric(horizontal: 16),
-            child: Container(
-              height: 20,
-              width: 200,
-              decoration: BoxDecoration(
-                color: Colors.grey.shade300,
-                borderRadius: BorderRadius.circular(8),
+            padding: const EdgeInsets.symmetric(horizontal: 20),
+            child: Center(
+              child: Container(
+                height: 24,
+                width: 200,
+                decoration: BoxDecoration(
+                  color: Colors.grey.shade300,
+                  borderRadius: BorderRadius.circular(8),
+                ),
               ),
+            ),
+          ),
+
+          const SizedBox(height: 8),
+
+          // Subtitle
+          Padding(
+            padding: const EdgeInsets.symmetric(horizontal: 20),
+            child: Center(
+              child: Container(
+                height: 16,
+                width: 140,
+                decoration: BoxDecoration(
+                  color: Colors.grey.shade300,
+                  borderRadius: BorderRadius.circular(8),
+                ),
+              ),
+            ),
+          ),
+
+          const SizedBox(height: 24),
+
+          // Info card
+          Container(
+            margin: const EdgeInsets.symmetric(horizontal: 20),
+            height: 60,
+            decoration: BoxDecoration(
+              color: Colors.grey.shade300,
+              borderRadius: BorderRadius.circular(25),
             ),
           ),
 
           const SizedBox(height: 10),
 
-          // Subtitle
-          Padding(
-            padding: const EdgeInsets.symmetric(horizontal: 16),
-            child: Container(
-              height: 16,
-              width: 140,
-              decoration: BoxDecoration(
-                color: Colors.grey.shade300,
-                borderRadius: BorderRadius.circular(8),
-              ),
-            ),
-          ),
-
-          const SizedBox(height: 30),
-
-          // Genres shimmer
-          Padding(
-            padding: const EdgeInsets.symmetric(horizontal: 16),
-            child: Wrap(
-              spacing: 10,
-              children: List.generate(
-                4,
-                (i) => Container(
-                  height: 28,
-                  width: 70,
-                  decoration: BoxDecoration(
-                    color: Colors.grey.shade300,
-                    borderRadius: BorderRadius.circular(20),
-                  ),
-                ),
-              ),
-            ),
-          ),
-
-          const SizedBox(height: 25),
-
-          // Description Title
-          Padding(
-            padding: const EdgeInsets.symmetric(horizontal: 16),
-            child: Container(
-              height: 20,
-              width: 120,
+          // Stats card
+          Container(
+            margin: const EdgeInsets.symmetric(horizontal: 20, vertical: 10),
+            height: 60,
+            decoration: BoxDecoration(
               color: Colors.grey.shade300,
+              borderRadius: BorderRadius.circular(20),
             ),
           ),
 
-          const SizedBox(height: 15),
+          const SizedBox(height: 12),
 
-          // Description lines
-          Padding(
-            padding: const EdgeInsets.symmetric(horizontal: 16),
+          // Genres card
+          Container(
+            width: double.infinity,
+            margin: const EdgeInsets.symmetric(horizontal: 20, vertical: 12),
+            padding: const EdgeInsets.fromLTRB(24, 12, 24, 18),
+            decoration: BoxDecoration(
+              color: Colors.grey.shade300,
+              borderRadius: BorderRadius.circular(20),
+            ),
             child: Column(
-              children: List.generate(
-                4,
-                (i) => Padding(
-                  padding: const EdgeInsets.only(bottom: 12),
-                  child: Container(
-                    height: 14,
-                    width: double.infinity,
-                    color: Colors.grey.shade300,
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Container(
+                  height: 20,
+                  width: 60,
+                  decoration: BoxDecoration(
+                    color: Colors.grey.shade400,
+                    borderRadius: BorderRadius.circular(4),
                   ),
                 ),
-              ),
+                const SizedBox(height: 16),
+                Wrap(
+                  spacing: 6,
+                  runSpacing: 6,
+                  children: List.generate(
+                    4,
+                    (i) => Container(
+                      height: 22,
+                      width: 70,
+                      decoration: BoxDecoration(
+                        color: Colors.grey.shade400,
+                        borderRadius: BorderRadius.circular(20),
+                      ),
+                    ),
+                  ),
+                ),
+              ],
+            ),
+          ),
+
+          // Description card
+          Container(
+            width: double.infinity,
+            margin: const EdgeInsets.symmetric(horizontal: 20, vertical: 12),
+            padding: const EdgeInsets.fromLTRB(24, 16, 24, 18),
+            decoration: BoxDecoration(
+              color: Colors.grey.shade300,
+              borderRadius: BorderRadius.circular(20),
+            ),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Container(
+                  height: 20,
+                  width: 100,
+                  decoration: BoxDecoration(
+                    color: Colors.grey.shade400,
+                    borderRadius: BorderRadius.circular(4),
+                  ),
+                ),
+                const SizedBox(height: 16),
+                ...List.generate(
+                  4,
+                  (i) => Padding(
+                    padding: const EdgeInsets.only(bottom: 10),
+                    child: Container(
+                      height: 14,
+                      width: double.infinity,
+                      decoration: BoxDecoration(
+                        color: Colors.grey.shade400,
+                        borderRadius: BorderRadius.circular(2),
+                      ),
+                    ),
+                  ),
+                ),
+              ],
             ),
           ),
         ],
