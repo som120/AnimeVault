@@ -377,14 +377,15 @@ class _AnimeDetailScreenState extends State<AnimeDetailScreen> {
     return Container(
       width: double.infinity,
       margin: const EdgeInsets.symmetric(horizontal: 20, vertical: 12),
-      padding: const EdgeInsets.all(16),
+      // Top: 24 to match Description title. Bottom: 16 for a balanced but compact look.
+      padding: const EdgeInsets.fromLTRB(24, 12, 24, 18),
       decoration: BoxDecoration(
         color: Colors.white,
         borderRadius: BorderRadius.circular(20),
         boxShadow: [
           BoxShadow(
             color: Colors.black.withOpacity(0.15),
-            blurRadius: 10,
+            blurRadius: 20,
             offset: const Offset(0, 4),
           ),
         ],
@@ -396,33 +397,34 @@ class _AnimeDetailScreenState extends State<AnimeDetailScreen> {
             "Genres",
             style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
           ),
-          const SizedBox(height: 10),
-          Center(
-            child: Wrap(
-              alignment: WrapAlignment.center,
-              spacing: 10,
-              runSpacing: 10,
-              children: genres.map<Widget>((genre) {
-                return Container(
-                  padding: const EdgeInsets.symmetric(
-                    horizontal: 14,
-                    vertical: 8,
+          const SizedBox(
+            height: 16,
+          ), // Restored to match Description section spacing
+          Wrap(
+            alignment: WrapAlignment.start,
+            spacing: 6,
+            runSpacing: 6,
+            children: genres.map<Widget>((genre) {
+              return Container(
+                padding: const EdgeInsets.symmetric(
+                  horizontal: 10,
+                  vertical: 5,
+                ),
+                decoration: BoxDecoration(
+                  color: const Color(0xFF714FDC).withOpacity(0.10),
+                  borderRadius: BorderRadius.circular(20),
+                  border: Border.all(color: const Color(0xFFE8E8E8)),
+                ),
+                child: Text(
+                  genre,
+                  style: const TextStyle(
+                    fontSize: 12,
+                    fontWeight: FontWeight.w600,
+                    color: Color(0xFF714FDC),
                   ),
-                  decoration: BoxDecoration(
-                    color: const Color(0xFF714FDC).withOpacity(0.10),
-                    borderRadius: BorderRadius.circular(20),
-                  ),
-                  child: Text(
-                    genre,
-                    style: const TextStyle(
-                      fontSize: 13,
-                      fontWeight: FontWeight.w600,
-                      color: Color(0xFF714FDC),
-                    ),
-                  ),
-                );
-              }).toList(),
-            ),
+                ),
+              );
+            }).toList(),
           ),
         ],
       ),
@@ -664,8 +666,8 @@ class _AnimeDetailScreenState extends State<AnimeDetailScreen> {
         borderRadius: BorderRadius.circular(20),
         boxShadow: [
           BoxShadow(
-            color: Colors.black.withOpacity(0.24),
-            blurRadius: 10,
+            color: Colors.black.withOpacity(0.2),
+            blurRadius: 20,
             offset: const Offset(0, 4),
           ),
         ],
@@ -685,7 +687,7 @@ class _AnimeDetailScreenState extends State<AnimeDetailScreen> {
           _buildDetailRow("Source", source, Icons.local_offer_rounded),
 
           const SizedBox(height: 10),
-          const Divider(),
+          Divider(color: Colors.grey.withOpacity(0.5)),
           const SizedBox(height: 10),
 
           // Studio
@@ -694,7 +696,7 @@ class _AnimeDetailScreenState extends State<AnimeDetailScreen> {
             children: [
               Icon(
                 Icons.movie_creation_rounded,
-                size: 18,
+                size: 20,
                 color: AppTheme.primary,
               ),
               const SizedBox(width: 8),
@@ -806,7 +808,7 @@ class _AnimeDetailScreenState extends State<AnimeDetailScreen> {
       padding: const EdgeInsets.only(bottom: 12),
       child: Row(
         children: [
-          Icon(icon, size: 18, color: AppTheme.primary),
+          Icon(icon, size: 20, color: AppTheme.primary),
           const SizedBox(width: 8),
           Text(
             label,
@@ -1128,7 +1130,8 @@ class _AnimeDetailScreenState extends State<AnimeDetailScreen> {
     return Container(
       width: double.infinity,
       margin: const EdgeInsets.symmetric(horizontal: 20, vertical: 12),
-      padding: const EdgeInsets.all(16),
+      // Increased padding to narrow text width and add breathing room
+      padding: const EdgeInsets.fromLTRB(24, 16, 24, 18),
       decoration: BoxDecoration(
         color: Colors.white,
         borderRadius: BorderRadius.circular(20),
@@ -1147,7 +1150,8 @@ class _AnimeDetailScreenState extends State<AnimeDetailScreen> {
             "Description",
             style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
           ),
-          const SizedBox(height: 8),
+          // More vertical padding between title and text
+          const SizedBox(height: 16),
           AnimatedCrossFade(
             firstChild: Text(
               description,
@@ -1156,7 +1160,7 @@ class _AnimeDetailScreenState extends State<AnimeDetailScreen> {
               style: TextStyle(
                 fontSize: 15,
                 color: Colors.grey.shade700,
-                height: 1.5,
+                height: 1.5, // Softer line-height
               ),
             ),
             secondChild: Text(
@@ -1164,7 +1168,7 @@ class _AnimeDetailScreenState extends State<AnimeDetailScreen> {
               style: TextStyle(
                 fontSize: 15,
                 color: Colors.grey.shade700,
-                height: 1.5,
+                height: 1.5, // Softer line-height
               ),
             ),
             crossFadeState: isDescriptionExpanded
@@ -1180,7 +1184,7 @@ class _AnimeDetailScreenState extends State<AnimeDetailScreen> {
                 });
               },
               child: Padding(
-                padding: const EdgeInsets.only(top: 12.0),
+                padding: const EdgeInsets.only(top: 16.0),
                 child: Row(
                   mainAxisAlignment: MainAxisAlignment.center,
                   children: [
@@ -1189,16 +1193,16 @@ class _AnimeDetailScreenState extends State<AnimeDetailScreen> {
                       style: const TextStyle(
                         color: Color(0xFF714FDC),
                         fontWeight: FontWeight.bold,
-                        fontSize: 14,
+                        fontSize: 15,
                       ),
                     ),
-                    const SizedBox(width: 4),
+                    const SizedBox(width: 6),
                     Icon(
                       isDescriptionExpanded
-                          ? Icons.keyboard_arrow_up
-                          : Icons.keyboard_arrow_down,
+                          ? Icons.keyboard_arrow_up_rounded
+                          : Icons.keyboard_arrow_down_rounded, // Chevron arrow
                       color: const Color(0xFF714FDC),
-                      size: 18,
+                      size: 24, // Slightly larger for emphasis
                     ),
                   ],
                 ),
