@@ -674,32 +674,50 @@ class _AnimeDetailScreenState extends State<AnimeDetailScreen> {
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           // Details Rows
-          _buildDetailRow("Duration", duration),
-          _buildDetailRow("Start Date", startDate),
-          _buildDetailRow("End Date", endDate),
-          _buildDetailRow("Season", season),
-          _buildDetailRow("Source", source),
+          _buildDetailRow("Duration", duration, Icons.schedule_rounded),
+          _buildDetailRow(
+            "Start Date",
+            startDate,
+            Icons.calendar_today_rounded,
+          ),
+          _buildDetailRow("End Date", endDate, Icons.event_rounded),
+          _buildDetailRow("Season", season, Icons.calendar_month_rounded),
+          _buildDetailRow("Source", source, Icons.local_offer_rounded),
 
           const SizedBox(height: 10),
           const Divider(),
           const SizedBox(height: 10),
 
           // Studio
-          Text(
-            "Studio",
-            style: TextStyle(
-              fontSize: 14,
-              color: Colors.grey.shade600,
-              fontWeight: FontWeight.w500,
-            ),
+          // Studio
+          Row(
+            children: [
+              Icon(
+                Icons.movie_creation_rounded,
+                size: 18,
+                color: AppTheme.primary,
+              ),
+              const SizedBox(width: 8),
+              Text(
+                "Studio",
+                style: TextStyle(
+                  fontSize: 14,
+                  color: Colors.grey.shade600,
+                  fontWeight: FontWeight.w500,
+                ),
+              ),
+            ],
           ),
           const SizedBox(height: 4),
-          Text(
-            studioName,
-            style: const TextStyle(
-              fontSize: 15,
-              fontWeight: FontWeight.bold,
-              color: Colors.black87,
+          Padding(
+            padding: const EdgeInsets.only(left: 26),
+            child: Text(
+              studioName,
+              style: const TextStyle(
+                fontSize: 15,
+                fontWeight: FontWeight.bold,
+                color: Colors.black87,
+              ),
             ),
           ),
 
@@ -783,12 +801,13 @@ class _AnimeDetailScreenState extends State<AnimeDetailScreen> {
     );
   }
 
-  Widget _buildDetailRow(String label, String value) {
+  Widget _buildDetailRow(String label, String value, IconData icon) {
     return Padding(
       padding: const EdgeInsets.only(bottom: 12),
       child: Row(
-        mainAxisAlignment: MainAxisAlignment.spaceBetween,
         children: [
+          Icon(icon, size: 18, color: AppTheme.primary),
+          const SizedBox(width: 8),
           Text(
             label,
             style: TextStyle(
@@ -797,6 +816,7 @@ class _AnimeDetailScreenState extends State<AnimeDetailScreen> {
               fontWeight: FontWeight.w500,
             ),
           ),
+          const Spacer(),
           Text(
             value,
             style: const TextStyle(
