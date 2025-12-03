@@ -72,9 +72,10 @@ class _CharacterDetailScreenState extends State<CharacterDetailScreen> {
       backgroundColor: Colors.white,
       body: CustomScrollView(
         controller: widget.scrollController,
+        physics: const ClampingScrollPhysics(),
         slivers: [
           SliverAppBar(
-            expandedHeight: 400,
+            expandedHeight: 350,
             pinned: true,
             backgroundColor: AppTheme.primary,
             flexibleSpace: FlexibleSpaceBar(
@@ -95,7 +96,8 @@ class _CharacterDetailScreenState extends State<CharacterDetailScreen> {
                       placeholder: MemoryImage(kTransparentImage),
                       image: ResizeImage(
                         NetworkImage(image),
-                        width: 800, // High res for header
+                        width: 800,
+                        height: 1200,
                       ),
                       fit: BoxFit.cover,
                       fadeInDuration: const Duration(milliseconds: 300),
@@ -288,9 +290,12 @@ class _CharacterDetailScreenState extends State<CharacterDetailScreen> {
                     ),
                     const SizedBox(height: 15),
                     SizedBox(
-                      height: 200, // Increased height
+                      height: 200,
                       child: ListView.separated(
                         scrollDirection: Axis.horizontal,
+                        physics: const BouncingScrollPhysics(),
+                        cacheExtent: 300,
+                        addRepaintBoundaries: true,
                         itemCount:
                             (character!['media']['nodes'] as List).length,
                         separatorBuilder: (context, index) =>
@@ -300,52 +305,53 @@ class _CharacterDetailScreenState extends State<CharacterDetailScreen> {
                           final title = anime['title']?['romaji'] ?? "Unknown";
                           final image = anime['coverImage']?['medium'];
 
-                          return GestureDetector(
-                            onTap: () {
-                              Navigator.push(
-                                context,
-                                MaterialPageRoute(
-                                  builder: (context) =>
-                                      AnimeDetailScreen(anime: anime),
-                                ),
-                              );
-                            },
-                            child: SizedBox(
-                              width: 120, // Increased width
-                              child: Column(
-                                crossAxisAlignment: CrossAxisAlignment.start,
-                                children: [
-                                  image != null
-                                      ? FadeInImageWidget(
-                                          imageUrl: image,
-                                          width: 120,
-                                          height: 160,
-                                        )
-                                      : Container(
-                                          width: 120,
-                                          height: 160,
-                                          decoration: BoxDecoration(
-                                            color: Colors.grey[300],
-                                            borderRadius: BorderRadius.circular(
-                                              12,
+                          return RepaintBoundary(
+                            child: GestureDetector(
+                              onTap: () {
+                                Navigator.push(
+                                  context,
+                                  MaterialPageRoute(
+                                    builder: (context) =>
+                                        AnimeDetailScreen(anime: anime),
+                                  ),
+                                );
+                              },
+                              child: SizedBox(
+                                width: 120,
+                                child: Column(
+                                  crossAxisAlignment: CrossAxisAlignment.start,
+                                  children: [
+                                    image != null
+                                        ? FadeInImageWidget(
+                                            imageUrl: image,
+                                            width: 120,
+                                            height: 160,
+                                          )
+                                        : Container(
+                                            width: 120,
+                                            height: 160,
+                                            decoration: BoxDecoration(
+                                              color: Colors.grey[300],
+                                              borderRadius:
+                                                  BorderRadius.circular(12),
+                                            ),
+                                            child: const Icon(
+                                              Icons.image,
+                                              color: Colors.grey,
                                             ),
                                           ),
-                                          child: const Icon(
-                                            Icons.image,
-                                            color: Colors.grey,
-                                          ),
-                                        ),
-                                  const SizedBox(height: 8),
-                                  Text(
-                                    title,
-                                    maxLines: 1,
-                                    overflow: TextOverflow.ellipsis,
-                                    style: const TextStyle(
-                                      fontSize: 13,
-                                      fontWeight: FontWeight.w600,
+                                    const SizedBox(height: 8),
+                                    Text(
+                                      title,
+                                      maxLines: 1,
+                                      overflow: TextOverflow.ellipsis,
+                                      style: const TextStyle(
+                                        fontSize: 13,
+                                        fontWeight: FontWeight.w600,
+                                      ),
                                     ),
-                                  ),
-                                ],
+                                  ],
+                                ),
                               ),
                             ),
                           );
@@ -369,28 +375,34 @@ class _CharacterDetailScreenState extends State<CharacterDetailScreen> {
     IconData icon,
     Color color,
   ) {
-    return Column(
-      children: [
-        Icon(icon, color: color, size: 26),
-        const SizedBox(height: 6),
-        Text(
-          value,
-          style: const TextStyle(
-            fontSize: 15,
-            fontWeight: FontWeight.bold,
-            color: Colors.black87,
+    return Expanded(
+      child: Column(
+        children: [
+          Icon(icon, color: color, size: 26),
+          const SizedBox(height: 6),
+          Text(
+            value,
+            textAlign: TextAlign.center,
+            maxLines: 3,
+            overflow: TextOverflow.ellipsis,
+            style: const TextStyle(
+              fontSize: 14,
+              fontWeight: FontWeight.bold,
+              color: Colors.black87,
+            ),
           ),
-        ),
-        const SizedBox(height: 2),
-        Text(
-          label,
-          style: TextStyle(
-            fontSize: 12,
-            color: Colors.grey.shade500,
-            fontWeight: FontWeight.w500,
+          const SizedBox(height: 2),
+          Text(
+            label,
+            textAlign: TextAlign.center,
+            style: TextStyle(
+              fontSize: 12,
+              color: Colors.grey.shade500,
+              fontWeight: FontWeight.w500,
+            ),
           ),
-        ),
-      ],
+        ],
+      ),
     );
   }
 }
