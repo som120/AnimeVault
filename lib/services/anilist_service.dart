@@ -150,6 +150,29 @@ class AniListService {
     }
   ''';
 
+  static const String genreQuery = r'''
+    query ($genre: String, $page: Int, $perPage: Int) {
+      Page(page: $page, perPage: $perPage) {
+        media(genre: $genre, sort: POPULARITY_DESC, type: ANIME) {
+          id
+          title { romaji english }
+          format
+          genres
+          description(asHtml: false)
+          episodes
+          averageScore
+          popularity
+          favourites
+          rankings { rank type allTime }
+          status
+          bannerImage
+          startDate { year }
+          coverImage { medium large }
+        }
+      }
+    }
+  ''';
+
   static const String mediaDetailQuery = r'''
     query ($id: Int) {
       Media(id: $id) {
@@ -174,11 +197,14 @@ class AniListService {
         coverImage { medium large }
         studios(isMain: true) { nodes { name } }
         trailer { id site thumbnail }
-        characters(sort: [ROLE, RELEVANCE], perPage: 10) {
-          nodes {
-            id
-            name { full }
-            image { medium }
+        characters(sort: [ROLE, RELEVANCE], perPage: 25) {
+          edges {
+            role
+            node {
+              id
+              name { full }
+              image { medium }
+            }
           }
         }
         recommendations(sort: RATING_DESC, perPage: 25) {
@@ -203,6 +229,14 @@ class AniListService {
               coverImage { medium large }
             }
           }
+        }
+        externalLinks {
+          id
+          url
+          site
+          type
+          icon
+          color
         }
       }
     }
@@ -313,6 +347,14 @@ class AniListService {
 
   static Future<List<dynamic>> getTopMovies() async =>
       _fetchMultiplePages(topMoviesQuery, perPage: 50, pages: 2);
+
+  static Future<List<dynamic>> getAnimeByGenre(String genre) async =>
+      _fetchMultiplePages(
+        genreQuery,
+        perPage: 50,
+        pages: 2,
+        otherVariables: {'genre': genre.trim()},
+      );
 
   static Future<Map<String, dynamic>?> getCharacterDetails(int id) async {
     final opts = QueryOptions(
