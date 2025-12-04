@@ -150,6 +150,29 @@ class AniListService {
     }
   ''';
 
+  static const String genreQuery = r'''
+    query ($genre: String, $page: Int, $perPage: Int) {
+      Page(page: $page, perPage: $perPage) {
+        media(genre: $genre, sort: POPULARITY_DESC, type: ANIME) {
+          id
+          title { romaji english }
+          format
+          genres
+          description(asHtml: false)
+          episodes
+          averageScore
+          popularity
+          favourites
+          rankings { rank type allTime }
+          status
+          bannerImage
+          startDate { year }
+          coverImage { medium large }
+        }
+      }
+    }
+  ''';
+
   static const String mediaDetailQuery = r'''
     query ($id: Int) {
       Media(id: $id) {
@@ -324,6 +347,14 @@ class AniListService {
 
   static Future<List<dynamic>> getTopMovies() async =>
       _fetchMultiplePages(topMoviesQuery, perPage: 50, pages: 2);
+
+  static Future<List<dynamic>> getAnimeByGenre(String genre) async =>
+      _fetchMultiplePages(
+        genreQuery,
+        perPage: 50,
+        pages: 2,
+        otherVariables: {'genre': genre.trim()},
+      );
 
   static Future<Map<String, dynamic>?> getCharacterDetails(int id) async {
     final opts = QueryOptions(

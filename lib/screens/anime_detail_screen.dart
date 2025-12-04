@@ -7,6 +7,7 @@ import 'dart:ui';
 import 'package:shimmer/shimmer.dart';
 import 'package:url_launcher/url_launcher.dart';
 import 'package:transparent_image/transparent_image.dart';
+import 'package:ainme_vault/screens/search_screen.dart';
 
 class AnimeDetailScreen extends StatefulWidget {
   final Map<String, dynamic> anime;
@@ -405,22 +406,35 @@ class _AnimeDetailScreenState extends State<AnimeDetailScreen> {
             spacing: 6,
             runSpacing: 6,
             children: genres.map<Widget>((genre) {
-              return Container(
-                padding: const EdgeInsets.symmetric(
-                  horizontal: 10,
-                  vertical: 5,
-                ),
-                decoration: BoxDecoration(
-                  color: const Color(0xFF714FDC).withOpacity(0.10),
-                  borderRadius: BorderRadius.circular(20),
-                  border: Border.all(color: const Color(0xFFE8E8E8)),
-                ),
-                child: Text(
-                  genre,
-                  style: const TextStyle(
-                    fontSize: 12,
-                    fontWeight: FontWeight.w600,
-                    color: Color(0xFF714FDC),
+              return GestureDetector(
+                onTap: () {
+                  // AniList API genres are case-sensitive and returned in Title Case
+                  // (e.g., "Action", "Comedy", "Sci-Fi")
+                  Navigator.push(
+                    context,
+                    MaterialPageRoute(
+                      builder: (context) =>
+                          SearchScreen(initialGenre: genre.toString().trim()),
+                    ),
+                  );
+                },
+                child: Container(
+                  padding: const EdgeInsets.symmetric(
+                    horizontal: 10,
+                    vertical: 5,
+                  ),
+                  decoration: BoxDecoration(
+                    color: const Color(0xFF714FDC).withOpacity(0.10),
+                    borderRadius: BorderRadius.circular(20),
+                    border: Border.all(color: const Color(0xFFE8E8E8)),
+                  ),
+                  child: Text(
+                    genre,
+                    style: const TextStyle(
+                      fontSize: 12,
+                      fontWeight: FontWeight.w600,
+                      color: Color(0xFF714FDC),
+                    ),
                   ),
                 ),
               );
@@ -838,98 +852,115 @@ class _AnimeDetailScreenState extends State<AnimeDetailScreen> {
       return const Center(child: Text("No characters found"));
     }
 
-    return SizedBox(
-      height: 200, // Increased height for role
-      child: ListView.separated(
-        padding: const EdgeInsets.symmetric(horizontal: 20),
-        scrollDirection: Axis.horizontal,
-        itemCount: characters.length,
-        separatorBuilder: (context, index) => const SizedBox(width: 14),
-        itemBuilder: (context, index) {
-          final edge = characters[index];
-          final node = edge['node'];
-          final role = edge['role']?.toString().toUpperCase() ?? "UNKNOWN";
+    return Container(
+      margin: const EdgeInsets.symmetric(horizontal: 20),
+      padding: const EdgeInsets.symmetric(vertical: 20),
+      decoration: BoxDecoration(
+        color: Colors.white,
+        borderRadius: BorderRadius.circular(20),
+        boxShadow: [
+          BoxShadow(
+            color: Colors.black.withOpacity(0.15),
+            blurRadius: 20,
+            offset: const Offset(0, 4),
+          ),
+        ],
+      ),
+      child: SizedBox(
+        height: 200, // Increased height for role
+        child: ListView.separated(
+          padding: const EdgeInsets.symmetric(horizontal: 20),
+          scrollDirection: Axis.horizontal,
+          itemCount: characters.length,
+          separatorBuilder: (context, index) => const SizedBox(width: 14),
+          itemBuilder: (context, index) {
+            final edge = characters[index];
+            final node = edge['node'];
+            final role = edge['role']?.toString().toUpperCase() ?? "UNKNOWN";
 
-          if (node == null) return const SizedBox.shrink();
+            if (node == null) return const SizedBox.shrink();
 
-          final name = node['name']?['full'] ?? "Unknown";
-          final image = node['image']?['medium'];
-          final id = node['id'];
+            final name = node['name']?['full'] ?? "Unknown";
+            final image = node['image']?['medium'];
+            final id = node['id'];
 
-          return GestureDetector(
-            onTap: () {
-              if (id != null) {
-                showModalBottomSheet(
-                  context: context,
-                  isScrollControlled: true,
-                  backgroundColor: Colors.transparent,
-                  builder: (context) => DraggableScrollableSheet(
-                    initialChildSize: 0.6,
-                    minChildSize: 0.4,
-                    maxChildSize: 1.0,
-                    builder: (context, scrollController) {
-                      return ClipRRect(
-                        borderRadius: const BorderRadius.vertical(
-                          top: Radius.circular(20),
-                        ),
-                        child: CharacterDetailScreen(
-                          characterId: id,
-                          placeholderName: name,
-                          placeholderImage: image,
-                          scrollController: scrollController,
-                        ),
-                      );
-                    },
-                  ),
-                );
-              }
-            },
-            child: SizedBox(
-              width: 130, // Increased width
-              child: Column(
-                children: [
-                  ClipRRect(
-                    borderRadius: BorderRadius.circular(60), // Increased radius
-                    child: image != null
-                        ? Image.network(
-                            image,
-                            width: 120, // Increased size
-                            height: 120, // Increased size
-                            fit: BoxFit.cover,
-                          )
-                        : Container(
-                            width: 120, // Increased size
-                            height: 120, // Increased size
-                            color: Colors.grey[300],
-                            child: const Icon(Icons.person),
+            return GestureDetector(
+              onTap: () {
+                if (id != null) {
+                  showModalBottomSheet(
+                    context: context,
+                    isScrollControlled: true,
+                    backgroundColor: Colors.transparent,
+                    builder: (context) => DraggableScrollableSheet(
+                      initialChildSize: 0.6,
+                      minChildSize: 0.4,
+                      maxChildSize: 1.0,
+                      builder: (context, scrollController) {
+                        return ClipRRect(
+                          borderRadius: const BorderRadius.vertical(
+                            top: Radius.circular(20),
                           ),
-                  ),
-                  const SizedBox(height: 8),
-                  Text(
-                    name,
-                    textAlign: TextAlign.center,
-                    maxLines: 2,
-                    overflow: TextOverflow.ellipsis,
-                    style: const TextStyle(
-                      fontSize: 12,
-                      fontWeight: FontWeight.w600,
+                          child: CharacterDetailScreen(
+                            characterId: id,
+                            placeholderName: name,
+                            placeholderImage: image,
+                            scrollController: scrollController,
+                          ),
+                        );
+                      },
                     ),
-                  ),
-                  const SizedBox(height: 4),
-                  Text(
-                    role,
-                    textAlign: TextAlign.center,
-                    style: TextStyle(
-                      fontSize: 10,
-                      color: Colors.grey.shade600,
-                      fontWeight: FontWeight.w500,
+                  );
+                }
+              },
+              child: SizedBox(
+                width: 130, // Increased width
+                child: Column(
+                  children: [
+                    ClipRRect(
+                      borderRadius: BorderRadius.circular(
+                        60,
+                      ), // Increased radius
+                      child: image != null
+                          ? Image.network(
+                              image,
+                              width: 120, // Increased size
+                              height: 120, // Increased size
+                              fit: BoxFit.cover,
+                            )
+                          : Container(
+                              width: 120, // Increased size
+                              height: 120, // Increased size
+                              color: Colors.grey[300],
+                              child: const Icon(Icons.person),
+                            ),
                     ),
-                  ),
-                ],
+                    const SizedBox(height: 8),
+                    Text(
+                      name,
+                      textAlign: TextAlign.center,
+                      maxLines: 2,
+                      overflow: TextOverflow.ellipsis,
+                      style: const TextStyle(
+                        fontSize: 12,
+                        fontWeight: FontWeight.w600,
+                      ),
+                    ),
+                    const SizedBox(height: 4),
+                    Text(
+                      role,
+                      textAlign: TextAlign.center,
+                      style: TextStyle(
+                        fontSize: 10,
+                        color: Colors.grey.shade600,
+                        fontWeight: FontWeight.w500,
+                      ),
+                    ),
+                  ],
+                ),
               ),
-            ),
-          );
-        },
+            );
+          },
+        ),
       ),
     );
   }
@@ -949,7 +980,7 @@ class _AnimeDetailScreenState extends State<AnimeDetailScreen> {
     }
 
     return SizedBox(
-      height: 190,
+      height: 220,
       child: ListView.separated(
         padding: const EdgeInsets.symmetric(horizontal: 20),
         scrollDirection: Axis.horizontal,
@@ -978,22 +1009,22 @@ class _AnimeDetailScreenState extends State<AnimeDetailScreen> {
               );
             },
             child: SizedBox(
-              width: 90,
+              width: 110,
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
                   image != null
                       ? FadeInImageWidget(
                           imageUrl: image,
-                          width: 90,
-                          height: 125,
+                          width: 110,
+                          height: 155,
                         )
                       : Container(
-                          width: 90,
-                          height: 125,
+                          width: 110,
+                          height: 155,
                           decoration: BoxDecoration(
                             color: Colors.grey[300],
-                            borderRadius: BorderRadius.circular(10),
+                            borderRadius: BorderRadius.circular(12),
                           ),
                           child: const Icon(Icons.image, color: Colors.grey),
                         ),
@@ -1138,7 +1169,7 @@ class _AnimeDetailScreenState extends State<AnimeDetailScreen> {
         boxShadow: [
           BoxShadow(
             color: Colors.black.withOpacity(0.15),
-            blurRadius: 10,
+            blurRadius: 20,
             offset: const Offset(0, 4),
           ),
         ],
@@ -1185,26 +1216,14 @@ class _AnimeDetailScreenState extends State<AnimeDetailScreen> {
               },
               child: Padding(
                 padding: const EdgeInsets.only(top: 16.0),
-                child: Row(
-                  mainAxisAlignment: MainAxisAlignment.center,
-                  children: [
-                    Text(
-                      isDescriptionExpanded ? "View Less" : "View More",
-                      style: const TextStyle(
-                        color: Color(0xFF714FDC),
-                        fontWeight: FontWeight.bold,
-                        fontSize: 15,
-                      ),
-                    ),
-                    const SizedBox(width: 6),
-                    Icon(
-                      isDescriptionExpanded
-                          ? Icons.keyboard_arrow_up_rounded
-                          : Icons.keyboard_arrow_down_rounded, // Chevron arrow
-                      color: const Color(0xFF714FDC),
-                      size: 24, // Slightly larger for emphasis
-                    ),
-                  ],
+                child: Center(
+                  child: Icon(
+                    isDescriptionExpanded
+                        ? Icons.keyboard_arrow_up_rounded
+                        : Icons.keyboard_arrow_down_rounded, // Chevron arrow
+                    color: const Color(0xFF714FDC),
+                    size: 24, // Slightly larger for emphasis
+                  ),
                 ),
               ),
             ),
