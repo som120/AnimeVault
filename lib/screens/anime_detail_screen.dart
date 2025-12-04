@@ -106,32 +106,39 @@ class _AnimeDetailScreenState extends State<AnimeDetailScreen> {
           clipBehavior: Clip.none,
           children: [
             // 🌈 BANNER
-            ClipRRect(
-              borderRadius: const BorderRadius.only(
-                bottomLeft: Radius.circular(30),
-                bottomRight: Radius.circular(30),
-              ),
-              child: SizedBox(
-                height: 260,
-                width: double.infinity,
-                child: Stack(
-                  fit: StackFit.expand,
-                  children: [
-                    Image.network(banner, fit: BoxFit.cover, cacheWidth: 800),
-                    Container(
-                      decoration: BoxDecoration(
-                        gradient: LinearGradient(
-                          begin: Alignment.topCenter,
-                          end: Alignment.bottomCenter,
-                          colors: [
-                            Colors.black.withOpacity(0.3),
-                            Colors.black.withOpacity(0.7),
-                          ],
-                          stops: const [0.0, 1.0],
+            RepaintBoundary(
+              child: ClipRRect(
+                borderRadius: const BorderRadius.only(
+                  bottomLeft: Radius.circular(30),
+                  bottomRight: Radius.circular(30),
+                ),
+                child: SizedBox(
+                  height: 260,
+                  width: double.infinity,
+                  child: Stack(
+                    fit: StackFit.expand,
+                    children: [
+                      Image.network(
+                        banner,
+                        fit: BoxFit.cover,
+                        cacheWidth: 800,
+                        gaplessPlayback: true,
+                      ),
+                      Container(
+                        decoration: BoxDecoration(
+                          gradient: LinearGradient(
+                            begin: Alignment.topCenter,
+                            end: Alignment.bottomCenter,
+                            colors: [
+                              Colors.black.withOpacity(0.3),
+                              Colors.black.withOpacity(0.7),
+                            ],
+                            stops: const [0.0, 1.0],
+                          ),
                         ),
                       ),
-                    ),
-                  ],
+                    ],
+                  ),
                 ),
               ),
             ),
@@ -142,26 +149,29 @@ class _AnimeDetailScreenState extends State<AnimeDetailScreen> {
               left: 0,
               right: 0,
               child: Center(
-                child: Container(
-                  decoration: BoxDecoration(
-                    borderRadius: BorderRadius.circular(16),
-                    boxShadow: [
-                      BoxShadow(
-                        color: Colors.black.withOpacity(0.25),
-                        blurRadius: 20,
-                        offset: const Offset(0, 10),
+                child: RepaintBoundary(
+                  child: Container(
+                    decoration: BoxDecoration(
+                      borderRadius: BorderRadius.circular(16),
+                      boxShadow: [
+                        BoxShadow(
+                          color: Colors.black.withOpacity(0.25),
+                          blurRadius: 20,
+                          offset: const Offset(0, 10),
+                        ),
+                      ],
+                    ),
+                    child: ClipRRect(
+                      borderRadius: BorderRadius.circular(16),
+                      child: Image.network(
+                        poster,
+                        height: 300,
+                        width: 210,
+                        fit: BoxFit.cover,
+                        cacheWidth: 420,
+                        cacheHeight: 600,
+                        gaplessPlayback: true,
                       ),
-                    ],
-                  ),
-                  child: ClipRRect(
-                    borderRadius: BorderRadius.circular(16),
-                    child: Image.network(
-                      poster,
-                      height: 300,
-                      width: 210,
-                      fit: BoxFit.cover,
-                      cacheWidth: 420,
-                      cacheHeight: 600,
                     ),
                   ),
                 ),
@@ -287,37 +297,44 @@ class _AnimeDetailScreenState extends State<AnimeDetailScreen> {
       }
     }
 
-    return Container(
-      margin: const EdgeInsets.symmetric(horizontal: 20, vertical: 10),
-      padding: const EdgeInsets.symmetric(vertical: 10, horizontal: 8),
-      decoration: BoxDecoration(
-        color: Colors.white,
-        borderRadius: BorderRadius.circular(20),
-        boxShadow: [
-          BoxShadow(
-            color: Colors.black.withOpacity(0.12),
-            blurRadius: 12,
-            offset: const Offset(0, 4),
-          ),
-        ],
-      ),
-      child: Row(
-        mainAxisAlignment: MainAxisAlignment.spaceAround,
-        children: [
-          _buildStatItem(Icons.star_rounded, Colors.amber, "$score%", "Score"),
-          _buildStatItem(
-            Icons.favorite_rounded,
-            Colors.pinkAccent,
-            popularity,
-            "Popular",
-          ),
-          _buildStatItem(
-            Icons.emoji_events_rounded,
-            Colors.blueAccent,
-            rank,
-            "Rank",
-          ),
-        ],
+    return RepaintBoundary(
+      child: Container(
+        margin: const EdgeInsets.symmetric(horizontal: 20, vertical: 10),
+        padding: const EdgeInsets.symmetric(vertical: 10, horizontal: 8),
+        decoration: BoxDecoration(
+          color: Colors.white,
+          borderRadius: BorderRadius.circular(20),
+          boxShadow: [
+            BoxShadow(
+              color: Colors.black.withOpacity(0.12),
+              blurRadius: 12,
+              offset: const Offset(0, 4),
+            ),
+          ],
+        ),
+        child: Row(
+          mainAxisAlignment: MainAxisAlignment.spaceAround,
+          children: [
+            _buildStatItem(
+              Icons.star_rounded,
+              Colors.amber,
+              "$score%",
+              "Score",
+            ),
+            _buildStatItem(
+              Icons.favorite_rounded,
+              Colors.pinkAccent,
+              popularity,
+              "Popular",
+            ),
+            _buildStatItem(
+              Icons.emoji_events_rounded,
+              Colors.blueAccent,
+              rank,
+              "Rank",
+            ),
+          ],
+        ),
       ),
     );
   }
@@ -375,72 +392,90 @@ class _AnimeDetailScreenState extends State<AnimeDetailScreen> {
     final genres = anime['genres'] ?? [];
     if (genres.isEmpty) return const SizedBox.shrink();
 
-    return Container(
-      width: double.infinity,
-      margin: const EdgeInsets.symmetric(horizontal: 20, vertical: 12),
-      // Top: 24 to match Description title. Bottom: 16 for a balanced but compact look.
-      padding: const EdgeInsets.fromLTRB(24, 12, 24, 18),
-      decoration: BoxDecoration(
-        color: Colors.white,
-        borderRadius: BorderRadius.circular(20),
-        boxShadow: [
-          BoxShadow(
-            color: Colors.black.withOpacity(0.15),
-            blurRadius: 20,
-            offset: const Offset(0, 4),
-          ),
-        ],
-      ),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          const Text(
-            "Genres",
-            style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
-          ),
-          const SizedBox(
-            height: 16,
-          ), // Restored to match Description section spacing
-          Wrap(
-            alignment: WrapAlignment.start,
-            spacing: 6,
-            runSpacing: 6,
-            children: genres.map<Widget>((genre) {
-              return GestureDetector(
-                onTap: () {
-                  // AniList API genres are case-sensitive and returned in Title Case
-                  // (e.g., "Action", "Comedy", "Sci-Fi")
-                  Navigator.push(
-                    context,
-                    MaterialPageRoute(
-                      builder: (context) =>
-                          SearchScreen(initialGenre: genre.toString().trim()),
+    return RepaintBoundary(
+      child: Container(
+        width: double.infinity,
+        margin: const EdgeInsets.symmetric(horizontal: 20, vertical: 12),
+        // Top: 24 to match Description title. Bottom: 16 for a balanced but compact look.
+        padding: const EdgeInsets.fromLTRB(24, 12, 24, 18),
+        decoration: BoxDecoration(
+          color: Colors.white,
+          borderRadius: BorderRadius.circular(20),
+          boxShadow: [
+            BoxShadow(
+              color: Colors.black.withOpacity(0.15),
+              blurRadius: 20,
+              offset: const Offset(0, 4),
+            ),
+          ],
+        ),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            const Text(
+              "Genres",
+              style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
+            ),
+            const SizedBox(
+              height: 16,
+            ), // Restored to match Description section spacing
+            Wrap(
+              alignment: WrapAlignment.start,
+              spacing: 6,
+              runSpacing: 6,
+              children: genres.map<Widget>((genre) {
+                return GestureDetector(
+                  onTap: () {
+                    // AniList API genres are case-sensitive and returned in Title Case
+                    // (e.g., "Action", "Comedy", "Sci-Fi")
+                    Navigator.push(
+                      context,
+                      PageRouteBuilder(
+                        pageBuilder: (context, animation, secondaryAnimation) =>
+                            SearchScreen(initialGenre: genre.toString().trim()),
+                        transitionsBuilder:
+                            (context, animation, secondaryAnimation, child) {
+                              const begin = Offset(0.0, 1.0);
+                              const end = Offset.zero;
+                              const curve = Curves.easeOutCubic;
+
+                              var tween = Tween(
+                                begin: begin,
+                                end: end,
+                              ).chain(CurveTween(curve: curve));
+
+                              return SlideTransition(
+                                position: animation.drive(tween),
+                                child: child,
+                              );
+                            },
+                      ),
+                    );
+                  },
+                  child: Container(
+                    padding: const EdgeInsets.symmetric(
+                      horizontal: 10,
+                      vertical: 5,
                     ),
-                  );
-                },
-                child: Container(
-                  padding: const EdgeInsets.symmetric(
-                    horizontal: 10,
-                    vertical: 5,
-                  ),
-                  decoration: BoxDecoration(
-                    color: const Color(0xFF714FDC).withOpacity(0.10),
-                    borderRadius: BorderRadius.circular(20),
-                    border: Border.all(color: const Color(0xFFE8E8E8)),
-                  ),
-                  child: Text(
-                    genre,
-                    style: const TextStyle(
-                      fontSize: 12,
-                      fontWeight: FontWeight.w600,
-                      color: Color(0xFF714FDC),
+                    decoration: BoxDecoration(
+                      color: const Color(0xFF714FDC).withOpacity(0.10),
+                      borderRadius: BorderRadius.circular(20),
+                      border: Border.all(color: const Color(0xFFE8E8E8)),
+                    ),
+                    child: Text(
+                      genre,
+                      style: const TextStyle(
+                        fontSize: 12,
+                        fontWeight: FontWeight.w600,
+                        color: Color(0xFF714FDC),
+                      ),
                     ),
                   ),
-                ),
-              );
-            }).toList(),
-          ),
-        ],
+                );
+              }).toList(),
+            ),
+          ],
+        ),
       ),
     );
   }
@@ -552,32 +587,86 @@ class _AnimeDetailScreenState extends State<AnimeDetailScreen> {
   }
 
   Widget buildTabsContainer(Map<String, dynamic> anime) {
-    return Column(
-      children: [
-        // Tab Buttons
-        Container(
-          margin: const EdgeInsets.symmetric(horizontal: 20),
-          padding: const EdgeInsets.all(4),
-          decoration: BoxDecoration(
-            color: Colors.grey.shade200,
-            borderRadius: BorderRadius.circular(25),
+    return RepaintBoundary(
+      child: Column(
+        children: [
+          // Tab Buttons
+          Container(
+            margin: const EdgeInsets.symmetric(horizontal: 20),
+            padding: const EdgeInsets.all(4),
+            decoration: BoxDecoration(
+              color: Colors.grey.shade200,
+              borderRadius: BorderRadius.circular(25),
+            ),
+            child: Row(
+              children: [
+                _buildTabButton("Information", 0),
+                _buildTabButton("Characters", 1),
+                _buildTabButton("Relations", 2),
+              ],
+            ),
           ),
-          child: Row(
-            children: [
-              _buildTabButton("Information", 0),
-              _buildTabButton("Characters", 1),
-              _buildTabButton("Relations", 2),
-            ],
-          ),
-        ),
-        const SizedBox(height: 20),
+          const SizedBox(height: 20),
 
-        // Tab Content
-        AnimatedSwitcher(
-          duration: const Duration(milliseconds: 300),
-          child: _buildTabContent(anime),
-        ),
-      ],
+          // Tab Content - Enhanced morphing animation
+          Container(
+            margin: const EdgeInsets.symmetric(horizontal: 20),
+            decoration: BoxDecoration(
+              color: Colors.white,
+              borderRadius: BorderRadius.circular(20),
+              boxShadow: [
+                BoxShadow(
+                  color: Colors.black.withOpacity(0.15),
+                  blurRadius: 20,
+                  offset: const Offset(0, 4),
+                ),
+              ],
+            ),
+            child: ClipRRect(
+              borderRadius: BorderRadius.circular(20),
+              child: AnimatedSize(
+                duration: const Duration(milliseconds: 450),
+                curve: Curves.easeInOutCubic,
+                alignment: Alignment.topCenter,
+                child: AnimatedSwitcher(
+                  duration: const Duration(milliseconds: 200),
+                  switchInCurve: Curves.easeInOutCubic,
+                  switchOutCurve: Curves.easeInOutCubic,
+                  layoutBuilder: (currentChild, previousChildren) {
+                    return Stack(
+                      alignment: Alignment.topCenter,
+                      children: <Widget>[
+                        ...previousChildren,
+                        if (currentChild != null) currentChild,
+                      ],
+                    );
+                  },
+                  transitionBuilder:
+                      (Widget child, Animation<double> animation) {
+                        return FadeTransition(
+                          opacity: animation,
+                          child: SlideTransition(
+                            position:
+                                Tween<Offset>(
+                                  begin: const Offset(0.0, 0.05),
+                                  end: Offset.zero,
+                                ).animate(
+                                  CurvedAnimation(
+                                    parent: animation,
+                                    curve: Curves.easeOutCubic,
+                                  ),
+                                ),
+                            child: child,
+                          ),
+                        );
+                      },
+                  child: _buildTabContent(anime),
+                ),
+              ),
+            ),
+          ),
+        ],
+      ),
     );
   }
 
@@ -618,11 +707,20 @@ class _AnimeDetailScreenState extends State<AnimeDetailScreen> {
   Widget _buildTabContent(Map<String, dynamic> anime) {
     switch (selectedTab) {
       case 0:
-        return _buildInformationTab(anime);
+        return KeyedSubtree(
+          key: const ValueKey('info'),
+          child: _buildInformationTab(anime),
+        );
       case 1:
-        return _buildCharactersTab(anime);
+        return KeyedSubtree(
+          key: const ValueKey('chars'),
+          child: _buildCharactersTab(anime),
+        );
       case 2:
-        return _buildRelationsTab(anime);
+        return KeyedSubtree(
+          key: const ValueKey('rels'),
+          child: _buildRelationsTab(anime),
+        );
       default:
         return const SizedBox.shrink();
     }
@@ -672,20 +770,8 @@ class _AnimeDetailScreenState extends State<AnimeDetailScreen> {
         ? "${anime['duration']} mins"
         : "Unknown";
 
-    return Container(
-      margin: const EdgeInsets.symmetric(horizontal: 20),
+    return Padding(
       padding: const EdgeInsets.all(20),
-      decoration: BoxDecoration(
-        color: Colors.white,
-        borderRadius: BorderRadius.circular(20),
-        boxShadow: [
-          BoxShadow(
-            color: Colors.black.withOpacity(0.2),
-            blurRadius: 20,
-            offset: const Offset(0, 4),
-          ),
-        ],
-      ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
@@ -852,26 +938,17 @@ class _AnimeDetailScreenState extends State<AnimeDetailScreen> {
       return const Center(child: Text("No characters found"));
     }
 
-    return Container(
-      margin: const EdgeInsets.symmetric(horizontal: 20),
-      padding: const EdgeInsets.symmetric(vertical: 20),
-      decoration: BoxDecoration(
-        color: Colors.white,
-        borderRadius: BorderRadius.circular(20),
-        boxShadow: [
-          BoxShadow(
-            color: Colors.black.withOpacity(0.15),
-            blurRadius: 20,
-            offset: const Offset(0, 4),
-          ),
-        ],
-      ),
+    return Padding(
+      padding: const EdgeInsets.fromLTRB(0, 20, 0, 5),
+
       child: SizedBox(
-        height: 200, // Increased height for role
+        height: 175, // Reduced height to fit content tightly
         child: ListView.separated(
           padding: const EdgeInsets.symmetric(horizontal: 20),
           scrollDirection: Axis.horizontal,
           itemCount: characters.length,
+          addAutomaticKeepAlives: false,
+          addRepaintBoundaries: true,
           separatorBuilder: (context, index) => const SizedBox(width: 14),
           itemBuilder: (context, index) {
             final edge = characters[index];
@@ -979,81 +1056,86 @@ class _AnimeDetailScreenState extends State<AnimeDetailScreen> {
       return const Center(child: Text("No relations found"));
     }
 
-    return SizedBox(
-      height: 220,
-      child: ListView.separated(
-        padding: const EdgeInsets.symmetric(horizontal: 20),
-        scrollDirection: Axis.horizontal,
-        itemCount: validRelations.length,
-        separatorBuilder: (context, index) => const SizedBox(width: 14),
-        itemBuilder: (context, index) {
-          final edge = validRelations[index];
-          final node = edge['node'];
-          final relationType =
-              edge['relationType']?.replaceAll('_', ' ') ?? 'RELATED';
+    return Padding(
+      padding: const EdgeInsets.fromLTRB(0, 20, 0, 0),
+      child: SizedBox(
+        height: 220,
+        child: ListView.separated(
+          padding: const EdgeInsets.symmetric(horizontal: 20),
+          scrollDirection: Axis.horizontal,
+          itemCount: validRelations.length,
+          addAutomaticKeepAlives: false,
+          addRepaintBoundaries: true,
+          separatorBuilder: (context, index) => const SizedBox(width: 14),
+          itemBuilder: (context, index) {
+            final edge = validRelations[index];
+            final node = edge['node'];
+            final relationType =
+                edge['relationType']?.replaceAll('_', ' ') ?? 'RELATED';
 
-          final title =
-              node['title']?['romaji'] ??
-              node['title']?['english'] ??
-              'Unknown';
-          final image =
-              node['coverImage']?['large'] ?? node['coverImage']?['medium'];
+            final title =
+                node['title']?['romaji'] ??
+                node['title']?['english'] ??
+                'Unknown';
+            final image =
+                node['coverImage']?['large'] ?? node['coverImage']?['medium'];
 
-          return GestureDetector(
-            onTap: () {
-              Navigator.push(
-                context,
-                MaterialPageRoute(
-                  builder: (context) => AnimeDetailScreen(anime: node),
-                ),
-              );
-            },
-            child: SizedBox(
-              width: 110,
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  image != null
-                      ? FadeInImageWidget(
-                          imageUrl: image,
-                          width: 110,
-                          height: 155,
-                        )
-                      : Container(
-                          width: 110,
-                          height: 155,
-                          decoration: BoxDecoration(
-                            color: Colors.grey[300],
-                            borderRadius: BorderRadius.circular(12),
+            return GestureDetector(
+              onTap: () {
+                Navigator.push(
+                  context,
+                  MaterialPageRoute(
+                    builder: (context) => AnimeDetailScreen(anime: node),
+                  ),
+                );
+              },
+              child: SizedBox(
+                width: 110,
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    image != null
+                        ? FadeInImageWidget(
+                            imageUrl: image,
+                            width: 110,
+                            height: 155,
+                          )
+                        : Container(
+                            width: 110,
+                            height: 155,
+                            decoration: BoxDecoration(
+                              color: Colors.grey[300],
+                              borderRadius: BorderRadius.circular(12),
+                            ),
+                            child: const Icon(Icons.image, color: Colors.grey),
                           ),
-                          child: const Icon(Icons.image, color: Colors.grey),
-                        ),
-                  const SizedBox(height: 6),
-                  Text(
-                    relationType,
-                    style: TextStyle(
-                      fontSize: 10,
-                      fontWeight: FontWeight.bold,
-                      color: AppTheme.primary,
-                      letterSpacing: 0.5,
+                    const SizedBox(height: 6),
+                    Text(
+                      relationType,
+                      style: TextStyle(
+                        fontSize: 10,
+                        fontWeight: FontWeight.bold,
+                        color: AppTheme.primary,
+                        letterSpacing: 0.5,
+                      ),
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
                     ),
-                    maxLines: 1,
-                    overflow: TextOverflow.ellipsis,
-                  ),
-                  Text(
-                    title,
-                    style: const TextStyle(
-                      fontSize: 12,
-                      fontWeight: FontWeight.w600,
+                    Text(
+                      title,
+                      style: const TextStyle(
+                        fontSize: 12,
+                        fontWeight: FontWeight.w600,
+                      ),
+                      maxLines: 2,
+                      overflow: TextOverflow.ellipsis,
                     ),
-                    maxLines: 2,
-                    overflow: TextOverflow.ellipsis,
-                  ),
-                ],
+                  ],
+                ),
               ),
-            ),
-          );
-        },
+            );
+          },
+        ),
       ),
     );
   }
@@ -1071,83 +1153,87 @@ class _AnimeDetailScreenState extends State<AnimeDetailScreen> {
 
     if (validRecs.isEmpty) return const SizedBox.shrink();
 
-    return Padding(
-      padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 20),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          const Text(
-            "Recommendations",
-            style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
-          ),
-          const SizedBox(height: 15),
-          SizedBox(
-            height: 190, // Reduced height
-            child: ListView.separated(
-              scrollDirection: Axis.horizontal,
-              itemCount: validRecs.length,
-              separatorBuilder: (context, index) => const SizedBox(width: 14),
-              itemBuilder: (context, index) {
-                final rec = validRecs[index];
-                final media = rec['mediaRecommendation'];
-                final title =
-                    media['title']?['romaji'] ??
-                    media['title']?['english'] ??
-                    "Unknown";
-                final image =
-                    media['coverImage']?['large'] ??
-                    media['coverImage']?['medium'];
-
-                return GestureDetector(
-                  onTap: () {
-                    Navigator.push(
-                      context,
-                      MaterialPageRoute(
-                        builder: (context) => AnimeDetailScreen(anime: media),
-                      ),
-                    );
-                  },
-                  child: SizedBox(
-                    width: 110, // Reduced width
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        image != null
-                            ? FadeInImageWidget(
-                                imageUrl: image,
-                                width: 110,
-                                height: 155,
-                              )
-                            : Container(
-                                width: 110,
-                                height: 155,
-                                decoration: BoxDecoration(
-                                  color: Colors.grey[300],
-                                  borderRadius: BorderRadius.circular(12),
-                                ),
-                                child: const Icon(
-                                  Icons.image,
-                                  color: Colors.grey,
-                                ),
-                              ),
-                        const SizedBox(height: 6),
-                        Text(
-                          title,
-                          style: const TextStyle(
-                            fontSize: 12,
-                            fontWeight: FontWeight.w600,
-                          ),
-                          maxLines: 1,
-                          overflow: TextOverflow.ellipsis,
-                        ),
-                      ],
-                    ),
-                  ),
-                );
-              },
+    return RepaintBoundary(
+      child: Padding(
+        padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 20),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            const Text(
+              "Recommendations",
+              style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
             ),
-          ),
-        ],
+            const SizedBox(height: 15),
+            SizedBox(
+              height: 190, // Reduced height
+              child: ListView.separated(
+                scrollDirection: Axis.horizontal,
+                itemCount: validRecs.length,
+                addAutomaticKeepAlives: false,
+                addRepaintBoundaries: true,
+                separatorBuilder: (context, index) => const SizedBox(width: 14),
+                itemBuilder: (context, index) {
+                  final rec = validRecs[index];
+                  final media = rec['mediaRecommendation'];
+                  final title =
+                      media['title']?['romaji'] ??
+                      media['title']?['english'] ??
+                      "Unknown";
+                  final image =
+                      media['coverImage']?['large'] ??
+                      media['coverImage']?['medium'];
+
+                  return GestureDetector(
+                    onTap: () {
+                      Navigator.push(
+                        context,
+                        MaterialPageRoute(
+                          builder: (context) => AnimeDetailScreen(anime: media),
+                        ),
+                      );
+                    },
+                    child: SizedBox(
+                      width: 110, // Reduced width
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          image != null
+                              ? FadeInImageWidget(
+                                  imageUrl: image,
+                                  width: 110,
+                                  height: 155,
+                                )
+                              : Container(
+                                  width: 110,
+                                  height: 155,
+                                  decoration: BoxDecoration(
+                                    color: Colors.grey[300],
+                                    borderRadius: BorderRadius.circular(12),
+                                  ),
+                                  child: const Icon(
+                                    Icons.image,
+                                    color: Colors.grey,
+                                  ),
+                                ),
+                          const SizedBox(height: 6),
+                          Text(
+                            title,
+                            style: const TextStyle(
+                              fontSize: 12,
+                              fontWeight: FontWeight.w600,
+                            ),
+                            maxLines: 1,
+                            overflow: TextOverflow.ellipsis,
+                          ),
+                        ],
+                      ),
+                    ),
+                  );
+                },
+              ),
+            ),
+          ],
+        ),
       ),
     );
   }
@@ -1158,76 +1244,78 @@ class _AnimeDetailScreenState extends State<AnimeDetailScreen> {
         "No description available.";
     final isLong = description.length > 200;
 
-    return Container(
-      width: double.infinity,
-      margin: const EdgeInsets.symmetric(horizontal: 20, vertical: 12),
-      // Increased padding to narrow text width and add breathing room
-      padding: const EdgeInsets.fromLTRB(24, 16, 24, 18),
-      decoration: BoxDecoration(
-        color: Colors.white,
-        borderRadius: BorderRadius.circular(20),
-        boxShadow: [
-          BoxShadow(
-            color: Colors.black.withOpacity(0.15),
-            blurRadius: 20,
-            offset: const Offset(0, 4),
-          ),
-        ],
-      ),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          const Text(
-            "Description",
-            style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
-          ),
-          // More vertical padding between title and text
-          const SizedBox(height: 16),
-          AnimatedCrossFade(
-            firstChild: Text(
-              description,
-              maxLines: 5,
-              overflow: TextOverflow.ellipsis,
-              style: TextStyle(
-                fontSize: 15,
-                color: Colors.grey.shade700,
-                height: 1.5, // Softer line-height
-              ),
+    return RepaintBoundary(
+      child: Container(
+        width: double.infinity,
+        margin: const EdgeInsets.symmetric(horizontal: 20, vertical: 12),
+        // Increased padding to narrow text width and add breathing room
+        padding: const EdgeInsets.fromLTRB(24, 16, 24, 18),
+        decoration: BoxDecoration(
+          color: Colors.white,
+          borderRadius: BorderRadius.circular(20),
+          boxShadow: [
+            BoxShadow(
+              color: Colors.black.withOpacity(0.15),
+              blurRadius: 20,
+              offset: const Offset(0, 4),
             ),
-            secondChild: Text(
-              description,
-              style: TextStyle(
-                fontSize: 15,
-                color: Colors.grey.shade700,
-                height: 1.5, // Softer line-height
-              ),
+          ],
+        ),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            const Text(
+              "Description",
+              style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
             ),
-            crossFadeState: isDescriptionExpanded
-                ? CrossFadeState.showSecond
-                : CrossFadeState.showFirst,
-            duration: const Duration(milliseconds: 300),
-          ),
-          if (isLong)
-            GestureDetector(
-              onTap: () {
-                setState(() {
-                  isDescriptionExpanded = !isDescriptionExpanded;
-                });
-              },
-              child: Padding(
-                padding: const EdgeInsets.only(top: 16.0),
-                child: Center(
-                  child: Icon(
-                    isDescriptionExpanded
-                        ? Icons.keyboard_arrow_up_rounded
-                        : Icons.keyboard_arrow_down_rounded, // Chevron arrow
-                    color: const Color(0xFF714FDC),
-                    size: 24, // Slightly larger for emphasis
+            // More vertical padding between title and text
+            const SizedBox(height: 16),
+            AnimatedCrossFade(
+              firstChild: Text(
+                description,
+                maxLines: 5,
+                overflow: TextOverflow.ellipsis,
+                style: TextStyle(
+                  fontSize: 15,
+                  color: Colors.grey.shade700,
+                  height: 1.5, // Softer line-height
+                ),
+              ),
+              secondChild: Text(
+                description,
+                style: TextStyle(
+                  fontSize: 15,
+                  color: Colors.grey.shade700,
+                  height: 1.5, // Softer line-height
+                ),
+              ),
+              crossFadeState: isDescriptionExpanded
+                  ? CrossFadeState.showSecond
+                  : CrossFadeState.showFirst,
+              duration: const Duration(milliseconds: 300),
+            ),
+            if (isLong)
+              GestureDetector(
+                onTap: () {
+                  setState(() {
+                    isDescriptionExpanded = !isDescriptionExpanded;
+                  });
+                },
+                child: Padding(
+                  padding: const EdgeInsets.only(top: 16.0),
+                  child: Center(
+                    child: Icon(
+                      isDescriptionExpanded
+                          ? Icons.keyboard_arrow_up_rounded
+                          : Icons.keyboard_arrow_down_rounded, // Chevron arrow
+                      color: const Color(0xFF714FDC),
+                      size: 24, // Slightly larger for emphasis
+                    ),
                   ),
                 ),
               ),
-            ),
-        ],
+          ],
+        ),
       ),
     );
   }
@@ -1256,6 +1344,7 @@ class _AnimeDetailScreenState extends State<AnimeDetailScreen> {
                     buildTabsContainer(widget.anime),
                     _buildStreamingSites(widget.anime),
                     buildRecommendations(widget.anime),
+                    const SizedBox(height: 30), // Bottom padding
                   ],
                 ),
               ),
