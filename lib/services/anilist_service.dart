@@ -187,6 +187,11 @@ class AniListService {
         favourites
         rankings { rank type allTime }
         status
+        nextAiringEpisode {
+          airingAt
+          timeUntilAiring
+          episode
+        }
         bannerImage
         startDate { year month day }
         endDate { year month day }

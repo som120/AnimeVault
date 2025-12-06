@@ -1,3 +1,4 @@
+import 'dart:async';
 import 'package:ainme_vault/services/anilist_service.dart';
 import 'package:ainme_vault/screens/character_detail_screen.dart';
 import 'package:ainme_vault/theme/app_theme.dart';
@@ -18,16 +19,43 @@ class AnimeDetailScreen extends StatefulWidget {
   State<AnimeDetailScreen> createState() => _AnimeDetailScreenState();
 }
 
-class _AnimeDetailScreenState extends State<AnimeDetailScreen> {
+class _AnimeDetailScreenState extends State<AnimeDetailScreen>
+    with TickerProviderStateMixin {
   final ScrollController _scrollController = ScrollController();
   bool isDarkStatusBar = true; // banner visible at start
   bool isLoading = true;
   bool isDescriptionExpanded = false;
   int selectedTab = 0; // 0: Information, 1: Characters, 2: Relations
+  late AnimationController _bannerAnimationController;
+  late Animation<double> _bannerAnimation;
+  late AnimationController _dotAnimationController;
+  Timer? _countdownTimer;
 
   @override
   void initState() {
     super.initState();
+
+    // Initialize banner animation
+    _bannerAnimationController = AnimationController(
+      duration: const Duration(seconds: 20),
+      vsync: this,
+    );
+
+    _bannerAnimation = Tween<double>(begin: 1.0, end: 1.15).animate(
+      CurvedAnimation(
+        parent: _bannerAnimationController,
+        curve: Curves.easeInOut,
+      ),
+    );
+
+    _bannerAnimationController.repeat(reverse: true);
+
+    // Initialize pulsing dot animation
+    _dotAnimationController = AnimationController(
+      duration: const Duration(milliseconds: 1500),
+      vsync: this,
+    )..repeat();
+
     WidgetsBinding.instance.addPostFrameCallback((_) {
       _setDarkStatusBar(); // white icons immediately
     });
@@ -51,6 +79,15 @@ class _AnimeDetailScreenState extends State<AnimeDetailScreen> {
         if (details != null) {
           // Merge details into existing anime map
           widget.anime.addAll(details);
+
+          // Start countdown timer if anime is airing
+          if (details['nextAiringEpisode'] != null) {
+            _countdownTimer?.cancel();
+            _countdownTimer = Timer.periodic(
+              const Duration(seconds: 60),
+              (_) => setState(() {}),
+            );
+          }
         }
         isLoading = false;
       });
@@ -115,29 +152,38 @@ class _AnimeDetailScreenState extends State<AnimeDetailScreen> {
                 child: SizedBox(
                   height: 260,
                   width: double.infinity,
-                  child: Stack(
-                    fit: StackFit.expand,
-                    children: [
-                      Image.network(
-                        banner,
-                        fit: BoxFit.cover,
-                        cacheWidth: 800,
-                        gaplessPlayback: true,
-                      ),
-                      Container(
-                        decoration: BoxDecoration(
-                          gradient: LinearGradient(
-                            begin: Alignment.topCenter,
-                            end: Alignment.bottomCenter,
-                            colors: [
-                              Colors.black.withOpacity(0.3),
-                              Colors.black.withOpacity(0.7),
-                            ],
-                            stops: const [0.0, 1.0],
+                  child: AnimatedBuilder(
+                    animation: _bannerAnimation,
+                    builder: (context, child) {
+                      return Transform.scale(
+                        scale: _bannerAnimation.value,
+                        child: child,
+                      );
+                    },
+                    child: Stack(
+                      fit: StackFit.expand,
+                      children: [
+                        Image.network(
+                          banner,
+                          fit: BoxFit.cover,
+                          cacheWidth: 800,
+                          gaplessPlayback: true,
+                        ),
+                        Container(
+                          decoration: BoxDecoration(
+                            gradient: LinearGradient(
+                              begin: Alignment.topCenter,
+                              end: Alignment.bottomCenter,
+                              colors: [
+                                Colors.black.withOpacity(0.3),
+                                Colors.black.withOpacity(0.7),
+                              ],
+                              stops: const [0.0, 1.0],
+                            ),
                           ),
                         ),
-                      ),
-                    ],
+                      ],
+                    ),
                   ),
                 ),
               ),
@@ -151,6 +197,8 @@ class _AnimeDetailScreenState extends State<AnimeDetailScreen> {
               child: Center(
                 child: RepaintBoundary(
                   child: Container(
+                    width: 210,
+                    height: 300,
                     decoration: BoxDecoration(
                       borderRadius: BorderRadius.circular(16),
                       boxShadow: [
@@ -161,17 +209,103 @@ class _AnimeDetailScreenState extends State<AnimeDetailScreen> {
                         ),
                       ],
                     ),
-                    child: ClipRRect(
-                      borderRadius: BorderRadius.circular(16),
-                      child: Image.network(
-                        poster,
-                        height: 300,
-                        width: 210,
-                        fit: BoxFit.cover,
-                        cacheWidth: 420,
-                        cacheHeight: 600,
-                        gaplessPlayback: true,
-                      ),
+                    child: Stack(
+                      clipBehavior: Clip.none,
+                      children: [
+                        ClipRRect(
+                          borderRadius: BorderRadius.circular(16),
+                          child: Image.network(
+                            poster,
+                            height: 300,
+                            width: 210,
+                            fit: BoxFit.cover,
+                            cacheWidth: 420,
+                            cacheHeight: 600,
+                            gaplessPlayback: true,
+                          ),
+                        ),
+                        // Green pulsing dot for airing anime (bottom right)
+                        if (widget.anime['status'] == 'RELEASING')
+                          Positioned(
+                            bottom: 4,
+                            right: 4,
+                            child: RepaintBoundary(
+                              child: AnimatedBuilder(
+                                animation: _dotAnimationController,
+                                builder: (context, child) {
+                                  final value = _dotAnimationController.value;
+                                  // Create a second staggered wave
+                                  final value2 = (value >= 0.5)
+                                      ? value - 0.5
+                                      : value + 0.5;
+
+                                  return SizedBox(
+                                    width: 24,
+                                    height: 24,
+                                    child: Stack(
+                                      alignment: Alignment.center,
+                                      children: [
+                                        // First Ripple Ring
+                                        if (value < 0.95)
+                                          Container(
+                                            width: 8 + (value * 16),
+                                            height: 8 + (value * 16),
+                                            decoration: BoxDecoration(
+                                              shape: BoxShape.circle,
+                                              border: Border.all(
+                                                color: Color.fromRGBO(
+                                                  105,
+                                                  240,
+                                                  174,
+                                                  (1.0 - value) * 0.8,
+                                                ),
+                                                width: 1.5,
+                                              ),
+                                            ),
+                                          ),
+                                        // Second Ripple Ring (Staggered)
+                                        if (value2 < 0.95)
+                                          Container(
+                                            width: 8 + (value2 * 16),
+                                            height: 8 + (value2 * 16),
+                                            decoration: BoxDecoration(
+                                              shape: BoxShape.circle,
+                                              border: Border.all(
+                                                color: Color.fromRGBO(
+                                                  105,
+                                                  240,
+                                                  174,
+                                                  (1.0 - value2) * 0.8,
+                                                ),
+                                                width: 1.5,
+                                              ),
+                                            ),
+                                          ),
+                                        // Center Dot (const child)
+                                        child!,
+                                      ],
+                                    ),
+                                  );
+                                },
+                                child: Container(
+                                  width: 8,
+                                  height: 8,
+                                  decoration: BoxDecoration(
+                                    color: const Color(0xFF69F0AE),
+                                    shape: BoxShape.circle,
+                                    boxShadow: const [
+                                      BoxShadow(
+                                        color: Color(0x9969F0AE),
+                                        blurRadius: 6,
+                                        spreadRadius: 1,
+                                      ),
+                                    ],
+                                  ),
+                                ),
+                              ),
+                            ),
+                          ),
+                      ],
                     ),
                   ),
                 ),
@@ -797,7 +931,7 @@ class _AnimeDetailScreenState extends State<AnimeDetailScreen> {
               Icon(
                 Icons.movie_creation_rounded,
                 size: 20,
-                color: AppTheme.primary,
+                color: AppTheme.primary.withOpacity(0.75),
               ),
               const SizedBox(width: 8),
               Text(
@@ -908,7 +1042,7 @@ class _AnimeDetailScreenState extends State<AnimeDetailScreen> {
       padding: const EdgeInsets.only(bottom: 12),
       child: Row(
         children: [
-          Icon(icon, size: 20, color: AppTheme.primary),
+          Icon(icon, size: 20, color: AppTheme.primary.withOpacity(0.75)),
           const SizedBox(width: 8),
           Text(
             label,
@@ -1330,7 +1464,12 @@ class _AnimeDetailScreenState extends State<AnimeDetailScreen> {
           key: ValueKey(isLoading),
           children: [
             if (isLoading)
-              const SingleChildScrollView(child: AnimeDetailShimmer())
+              SingleChildScrollView(
+                child: AnimeDetailShimmer(
+                  anime: widget.anime,
+                  bannerAnimation: _bannerAnimation,
+                ),
+              )
             else
               SingleChildScrollView(
                 controller: _scrollController,
@@ -1338,6 +1477,7 @@ class _AnimeDetailScreenState extends State<AnimeDetailScreen> {
                   children: [
                     buildTopSection(context, widget.anime),
                     buildStatsCard(widget.anime),
+                    _buildNextEpisodeWidget(widget.anime),
                     buildGenres(widget.anime),
                     buildDescription(widget.anime),
                     const SizedBox(height: 10),
@@ -1367,15 +1507,82 @@ class _AnimeDetailScreenState extends State<AnimeDetailScreen> {
     );
   }
 
+  Widget _buildNextEpisodeWidget(Map<String, dynamic> anime) {
+    if (anime['status'] != 'RELEASING' || anime['nextAiringEpisode'] == null) {
+      return const SizedBox.shrink();
+    }
+
+    final nextEp = anime['nextAiringEpisode'];
+    final airingAt = nextEp['airingAt'] as int;
+    final firingDate = DateTime.fromMillisecondsSinceEpoch(airingAt * 1000);
+    final now = DateTime.now();
+    final diff = firingDate.difference(now);
+
+    if (diff.isNegative) return const SizedBox.shrink();
+
+    final days = diff.inDays;
+    final hours = diff.inHours % 24;
+    final minutes = diff.inMinutes % 60;
+
+    return Container(
+      margin: const EdgeInsets.fromLTRB(20, 0, 20, 20),
+      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+      decoration: BoxDecoration(
+        color: AppTheme.primary.withOpacity(0.1),
+        borderRadius: BorderRadius.circular(16),
+        border: Border.all(color: AppTheme.primary.withOpacity(0.3)),
+      ),
+      child: Row(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          Icon(Icons.timer_rounded, color: AppTheme.primary),
+          const SizedBox(width: 12),
+          Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Text(
+                "Ep ${nextEp['episode']} Airing In",
+                style: TextStyle(
+                  fontSize: 12,
+                  color: AppTheme.primary.withOpacity(0.8),
+                  fontWeight: FontWeight.bold,
+                ),
+              ),
+              const SizedBox(height: 2),
+              Text(
+                "${days}d ${hours}h ${minutes}m",
+                style: TextStyle(
+                  fontSize: 16,
+                  color: AppTheme.primary,
+                  fontWeight: FontWeight.bold,
+                ),
+              ),
+            ],
+          ),
+        ],
+      ),
+    );
+  }
+
   @override
   void dispose() {
+    _countdownTimer?.cancel();
     _scrollController.dispose();
+    _bannerAnimationController.dispose();
+    _dotAnimationController.dispose();
     super.dispose();
   }
 }
 
 class AnimeDetailShimmer extends StatelessWidget {
-  const AnimeDetailShimmer({super.key});
+  final Map<String, dynamic> anime;
+  final Animation<double> bannerAnimation;
+
+  const AnimeDetailShimmer({
+    super.key,
+    required this.anime,
+    required this.bannerAnimation,
+  });
 
   @override
   Widget build(BuildContext context) {
@@ -1389,15 +1596,50 @@ class AnimeDetailShimmer extends StatelessWidget {
           Stack(
             clipBehavior: Clip.none,
             children: [
-              // Banner shimmer
-              Container(
-                height: 260,
-                width: double.infinity,
-                decoration: BoxDecoration(
-                  color: Colors.grey.shade300,
+              // Animated Banner (loads immediately)
+              RepaintBoundary(
+                child: ClipRRect(
                   borderRadius: const BorderRadius.only(
                     bottomLeft: Radius.circular(30),
                     bottomRight: Radius.circular(30),
+                  ),
+                  child: SizedBox(
+                    height: 260,
+                    width: double.infinity,
+                    child: AnimatedBuilder(
+                      animation: bannerAnimation,
+                      builder: (context, child) {
+                        return Transform.scale(
+                          scale: bannerAnimation.value,
+                          child: child,
+                        );
+                      },
+                      child: Stack(
+                        fit: StackFit.expand,
+                        children: [
+                          Image.network(
+                            anime['bannerImage'] ??
+                                anime['coverImage']?['large'],
+                            fit: BoxFit.cover,
+                            cacheWidth: 800,
+                            gaplessPlayback: true,
+                          ),
+                          Container(
+                            decoration: BoxDecoration(
+                              gradient: LinearGradient(
+                                begin: Alignment.topCenter,
+                                end: Alignment.bottomCenter,
+                                colors: [
+                                  Colors.black.withOpacity(0.3),
+                                  Colors.black.withOpacity(0.7),
+                                ],
+                                stops: const [0.0, 1.0],
+                              ),
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
                   ),
                 ),
               ),
