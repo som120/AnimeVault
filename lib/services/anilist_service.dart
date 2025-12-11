@@ -310,21 +310,34 @@ class AniListService {
     int pages = 2,
     Map<String, dynamic>? otherVariables,
   }) async {
-    final List<dynamic> combined = [];
+    final List<Future<List<dynamic>>> futures = [];
+
     for (var p = 1; p <= pages; p++) {
       final vars = <String, dynamic>{'page': p, 'perPage': perPage};
       if (otherVariables != null) vars.addAll(otherVariables);
-      final pageResult = await _fetch(
-        query,
-        variables: vars,
-        fetchPolicy: FetchPolicy.networkOnly,
+      futures.add(
+        _fetch(
+          query,
+          variables: vars,
+          // Use cache-first if appropriate, but networkOnly ensures fresh data.
+          // Keeping networkOnly for now as per original code, but parallelizing.
+          fetchPolicy: FetchPolicy.networkOnly,
+        ),
       );
-      if (pageResult.isEmpty) {
-        // If a page returns empty, break early
+    }
+
+    final results = await Future.wait(futures);
+
+    final combined = <dynamic>[];
+    for (final pageData in results) {
+      if (pageData.isEmpty) {
+        // If a page in the sequence is missing (failed), stop adding subsequent pages
+        // to maintain the correct order and ranking integrity.
         break;
       }
-      combined.addAll(pageResult);
+      combined.addAll(pageData);
     }
+
     return combined;
   }
 

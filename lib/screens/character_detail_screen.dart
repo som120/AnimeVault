@@ -2,7 +2,7 @@ import 'package:ainme_vault/services/anilist_service.dart';
 import 'package:ainme_vault/theme/app_theme.dart';
 import 'package:ainme_vault/screens/anime_detail_screen.dart';
 import 'package:flutter/material.dart';
-import 'package:transparent_image/transparent_image.dart';
+import 'package:cached_network_image/cached_network_image.dart';
 
 class CharacterDetailScreen extends StatefulWidget {
   final int characterId;
@@ -92,14 +92,15 @@ class _CharacterDetailScreenState extends State<CharacterDetailScreen> {
                 fit: StackFit.expand,
                 children: [
                   if (image != null)
-                    FadeInImage(
-                      placeholder: MemoryImage(kTransparentImage),
-                      image: ResizeImage(
-                        NetworkImage(image),
-                        width: 800,
-                        height: 1200,
-                      ),
+                    CachedNetworkImage(
+                      imageUrl: image,
                       fit: BoxFit.cover,
+                      memCacheWidth: 800,
+                      memCacheHeight: 1200,
+                      placeholder: (context, url) =>
+                          Container(color: Colors.grey[300]),
+                      errorWidget: (context, url, error) =>
+                          Container(color: Colors.grey),
                       fadeInDuration: const Duration(milliseconds: 300),
                     )
                   else
@@ -427,24 +428,18 @@ class FadeInImageWidget extends StatelessWidget {
         width: width,
         height: height,
         color: Colors.grey[200],
-        child: FadeInImage(
-          placeholder: MemoryImage(kTransparentImage),
-          image: ResizeImage(
-            NetworkImage(imageUrl),
-            width: (width * 3).toInt(), // Optimize decoding size
-          ),
+        child: CachedNetworkImage(
+          imageUrl: imageUrl,
           width: width,
           height: height,
           fit: BoxFit.cover,
+          memCacheWidth: (width * 3).toInt(),
+          placeholder: (context, url) => Container(color: Colors.grey[200]),
+          errorWidget: (context, url, error) => Container(
+            color: Colors.grey[300],
+            child: const Icon(Icons.broken_image, color: Colors.grey),
+          ),
           fadeInDuration: const Duration(milliseconds: 250),
-          imageErrorBuilder: (context, error, stackTrace) {
-            return Container(
-              width: width,
-              height: height,
-              color: Colors.grey[300],
-              child: const Icon(Icons.broken_image, color: Colors.grey),
-            );
-          },
         ),
       ),
     );

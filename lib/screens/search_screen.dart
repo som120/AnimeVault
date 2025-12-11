@@ -6,7 +6,8 @@ import 'anime_detail_screen.dart';
 import 'dart:async';
 import 'package:shimmer/shimmer.dart';
 import 'package:shared_preferences/shared_preferences.dart';
-import 'package:transparent_image/transparent_image.dart';
+
+import 'package:cached_network_image/cached_network_image.dart';
 
 class SearchScreen extends StatefulWidget {
   final String? initialGenre;
@@ -690,7 +691,7 @@ class AnimeListCard extends StatelessWidget {
                                 : rank == 3
                                 ? Colors.brown[200]!
                                 : Colors.indigo.shade100,
-                            period: const Duration(milliseconds: 1500),
+                            period: const Duration(milliseconds: 1200),
                             child: Container(
                               decoration: BoxDecoration(
                                 color: Colors.white,
@@ -757,6 +758,7 @@ class AnimeListShimmer extends StatelessWidget {
         return Shimmer.fromColors(
           baseColor: Colors.grey.shade300,
           highlightColor: Colors.grey.shade100,
+          period: const Duration(milliseconds: 1200),
           child: Container(
             margin: const EdgeInsets.symmetric(vertical: 6),
             padding: const EdgeInsets.all(10),
@@ -846,24 +848,18 @@ class FadeInImageWidget extends StatelessWidget {
         width: width,
         height: height,
         color: Colors.grey[200],
-        child: FadeInImage(
-          placeholder: MemoryImage(kTransparentImage),
-          image: ResizeImage(
-            NetworkImage(imageUrl),
-            width: (width * 3).toInt(), // Optimize decoding size
-          ),
+        child: CachedNetworkImage(
+          imageUrl: imageUrl,
           width: width,
           height: height,
           fit: BoxFit.cover,
+          memCacheWidth: (width * 3).toInt(), // Optimize memory usage
+          placeholder: (context, url) => Container(color: Colors.grey[200]),
+          errorWidget: (context, url, error) => Container(
+            color: Colors.grey[300],
+            child: const Icon(Icons.broken_image, color: Colors.grey),
+          ),
           fadeInDuration: const Duration(milliseconds: 250),
-          imageErrorBuilder: (context, error, stackTrace) {
-            return Container(
-              width: width,
-              height: height,
-              color: Colors.grey[300],
-              child: const Icon(Icons.broken_image, color: Colors.grey),
-            );
-          },
         ),
       ),
     );

@@ -4,10 +4,10 @@ import 'package:ainme_vault/screens/character_detail_screen.dart';
 import 'package:ainme_vault/theme/app_theme.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
-import 'dart:ui';
+
 import 'package:shimmer/shimmer.dart';
 import 'package:url_launcher/url_launcher.dart';
-import 'package:transparent_image/transparent_image.dart';
+import 'package:cached_network_image/cached_network_image.dart';
 import 'package:ainme_vault/screens/search_screen.dart';
 
 class AnimeDetailScreen extends StatefulWidget {
@@ -23,7 +23,7 @@ class _AnimeDetailScreenState extends State<AnimeDetailScreen>
     with TickerProviderStateMixin {
   final ScrollController _scrollController = ScrollController();
   bool isDarkStatusBar = true; // banner visible at start
-  bool isLoading = true;
+  bool isLoading = false;
   bool isDescriptionExpanded = false;
   int selectedTab = 0; // 0: Information, 1: Characters, 2: Relations
   late AnimationController _bannerAnimationController;
@@ -89,7 +89,6 @@ class _AnimeDetailScreenState extends State<AnimeDetailScreen>
             );
           }
         }
-        isLoading = false;
       });
     }
   }
@@ -163,11 +162,14 @@ class _AnimeDetailScreenState extends State<AnimeDetailScreen>
                     child: Stack(
                       fit: StackFit.expand,
                       children: [
-                        Image.network(
-                          banner,
+                        CachedNetworkImage(
+                          imageUrl: banner,
                           fit: BoxFit.cover,
-                          cacheWidth: 800,
-                          gaplessPlayback: true,
+                          memCacheWidth: 800,
+                          placeholder: (context, url) =>
+                              Container(color: Colors.grey[900]),
+                          errorWidget: (context, url, error) =>
+                              Container(color: Colors.grey[900]),
                         ),
                         Container(
                           decoration: BoxDecoration(
@@ -214,14 +216,19 @@ class _AnimeDetailScreenState extends State<AnimeDetailScreen>
                       children: [
                         ClipRRect(
                           borderRadius: BorderRadius.circular(16),
-                          child: Image.network(
-                            poster,
+                          child: CachedNetworkImage(
+                            imageUrl: poster,
                             height: 300,
                             width: 210,
                             fit: BoxFit.cover,
-                            cacheWidth: 420,
-                            cacheHeight: 600,
-                            gaplessPlayback: true,
+                            memCacheWidth: 420,
+                            memCacheHeight: 600,
+                            placeholder: (context, url) =>
+                                Container(color: Colors.grey[300]),
+                            errorWidget: (context, url, error) => Container(
+                              color: Colors.grey[300],
+                              child: const Icon(Icons.broken_image),
+                            ),
                           ),
                         ),
                         // Green pulsing dot for airing anime (bottom right)
@@ -1068,6 +1075,16 @@ class _AnimeDetailScreenState extends State<AnimeDetailScreen>
 
   Widget _buildCharactersTab(Map<String, dynamic> anime) {
     final characters = anime['characters']?['edges'] as List?;
+    // Show loading indicator if characters are not yet loaded (null) but not empty list (explicitly no chars)
+    // Actually API returns null if not fetched yet, empty list if fetched but none.
+    // However, since we initialize with basic data, 'characters' key might be missing entirely.
+    if (characters == null && widget.anime['characters'] == null) {
+      return const SizedBox(
+        height: 175,
+        child: Center(child: CircularProgressIndicator()),
+      );
+    }
+
     if (characters == null || characters.isEmpty) {
       return const Center(child: Text("No characters found"));
     }
@@ -1178,6 +1195,14 @@ class _AnimeDetailScreenState extends State<AnimeDetailScreen>
 
   Widget _buildRelationsTab(Map<String, dynamic> anime) {
     final relations = anime['relations']?['edges'] as List?;
+
+    if (relations == null && widget.anime['relations'] == null) {
+      return const SizedBox(
+        height: 220,
+        child: Center(child: CircularProgressIndicator()),
+      );
+    }
+
     if (relations == null || relations.isEmpty) {
       return const Center(child: Text("No relations found"));
     }
@@ -1463,31 +1488,23 @@ class _AnimeDetailScreenState extends State<AnimeDetailScreen>
         child: Stack(
           key: ValueKey(isLoading),
           children: [
-            if (isLoading)
-              SingleChildScrollView(
-                child: AnimeDetailShimmer(
-                  anime: widget.anime,
-                  bannerAnimation: _bannerAnimation,
-                ),
-              )
-            else
-              SingleChildScrollView(
-                controller: _scrollController,
-                child: Column(
-                  children: [
-                    buildTopSection(context, widget.anime),
-                    buildStatsCard(widget.anime),
-                    _buildNextEpisodeWidget(widget.anime),
-                    buildGenres(widget.anime),
-                    buildDescription(widget.anime),
-                    const SizedBox(height: 10),
-                    buildTabsContainer(widget.anime),
-                    _buildStreamingSites(widget.anime),
-                    buildRecommendations(widget.anime),
-                    const SizedBox(height: 30), // Bottom padding
-                  ],
-                ),
+            SingleChildScrollView(
+              controller: _scrollController,
+              child: Column(
+                children: [
+                  buildTopSection(context, widget.anime),
+                  buildStatsCard(widget.anime),
+                  _buildNextEpisodeWidget(widget.anime),
+                  buildGenres(widget.anime),
+                  buildDescription(widget.anime),
+                  const SizedBox(height: 10),
+                  buildTabsContainer(widget.anime),
+                  _buildStreamingSites(widget.anime),
+                  buildRecommendations(widget.anime),
+                  const SizedBox(height: 30), // Bottom padding
+                ],
               ),
+            ),
 
             // Back Button
             Positioned(
@@ -1589,6 +1606,7 @@ class AnimeDetailShimmer extends StatelessWidget {
     return Shimmer.fromColors(
       baseColor: Colors.grey.shade300,
       highlightColor: Colors.grey.shade100,
+      period: const Duration(milliseconds: 1200),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
@@ -1826,24 +1844,18 @@ class FadeInImageWidget extends StatelessWidget {
         width: width,
         height: height,
         color: Colors.grey[200],
-        child: FadeInImage(
-          placeholder: MemoryImage(kTransparentImage),
-          image: ResizeImage(
-            NetworkImage(imageUrl),
-            width: (width * 3).toInt(), // Optimize decoding size
-          ),
+        child: CachedNetworkImage(
+          imageUrl: imageUrl,
           width: width,
           height: height,
           fit: BoxFit.cover,
+          memCacheWidth: (width * 3).toInt(), // Optimize decoding size
+          placeholder: (context, url) => Container(color: Colors.grey[200]),
+          errorWidget: (context, url, error) => Container(
+            color: Colors.grey[300],
+            child: const Icon(Icons.broken_image, color: Colors.grey),
+          ),
           fadeInDuration: const Duration(milliseconds: 250),
-          imageErrorBuilder: (context, error, stackTrace) {
-            return Container(
-              width: width,
-              height: height,
-              color: Colors.grey[300],
-              child: const Icon(Icons.broken_image, color: Colors.grey),
-            );
-          },
         ),
       ),
     );
