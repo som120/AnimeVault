@@ -1,12 +1,14 @@
+import 'dart:async';
 import 'package:ainme_vault/services/anilist_service.dart';
 import 'package:ainme_vault/screens/character_detail_screen.dart';
 import 'package:ainme_vault/theme/app_theme.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
-import 'dart:ui';
+
 import 'package:shimmer/shimmer.dart';
 import 'package:url_launcher/url_launcher.dart';
-import 'package:transparent_image/transparent_image.dart';
+import 'package:cached_network_image/cached_network_image.dart';
+import 'package:ainme_vault/screens/search_screen.dart';
 
 class AnimeDetailScreen extends StatefulWidget {
   final Map<String, dynamic> anime;
@@ -17,16 +19,43 @@ class AnimeDetailScreen extends StatefulWidget {
   State<AnimeDetailScreen> createState() => _AnimeDetailScreenState();
 }
 
-class _AnimeDetailScreenState extends State<AnimeDetailScreen> {
+class _AnimeDetailScreenState extends State<AnimeDetailScreen>
+    with TickerProviderStateMixin {
   final ScrollController _scrollController = ScrollController();
   bool isDarkStatusBar = true; // banner visible at start
-  bool isLoading = true;
+  bool isLoading = false;
   bool isDescriptionExpanded = false;
   int selectedTab = 0; // 0: Information, 1: Characters, 2: Relations
+  late AnimationController _bannerAnimationController;
+  late Animation<double> _bannerAnimation;
+  late AnimationController _dotAnimationController;
+  Timer? _countdownTimer;
 
   @override
   void initState() {
     super.initState();
+
+    // Initialize banner animation
+    _bannerAnimationController = AnimationController(
+      duration: const Duration(seconds: 20),
+      vsync: this,
+    );
+
+    _bannerAnimation = Tween<double>(begin: 1.0, end: 1.15).animate(
+      CurvedAnimation(
+        parent: _bannerAnimationController,
+        curve: Curves.easeInOut,
+      ),
+    );
+
+    _bannerAnimationController.repeat(reverse: true);
+
+    // Initialize pulsing dot animation
+    _dotAnimationController = AnimationController(
+      duration: const Duration(milliseconds: 1500),
+      vsync: this,
+    )..repeat();
+
     WidgetsBinding.instance.addPostFrameCallback((_) {
       _setDarkStatusBar(); // white icons immediately
     });
@@ -50,21 +79,27 @@ class _AnimeDetailScreenState extends State<AnimeDetailScreen> {
         if (details != null) {
           // Merge details into existing anime map
           widget.anime.addAll(details);
+
+          // Start countdown timer if anime is airing
+          if (details['nextAiringEpisode'] != null) {
+            _countdownTimer?.cancel();
+            _countdownTimer = Timer.periodic(
+              const Duration(seconds: 60),
+              (_) => setState(() {}),
+            );
+          }
         }
-        isLoading = false;
       });
     }
   }
 
   void _handleScroll() {
-    // If scrolled more than 100px → switch to light icons
+    // Update status bar without setState to avoid rebuilds
     if (_scrollController.offset > 100 && isDarkStatusBar == true) {
-      setState(() => isDarkStatusBar = false);
+      isDarkStatusBar = false;
       _setLightStatusBar(); // black icons
-    }
-    // If near top → white icons
-    else if (_scrollController.offset <= 100 && isDarkStatusBar == false) {
-      setState(() => isDarkStatusBar = true);
+    } else if (_scrollController.offset <= 100 && isDarkStatusBar == false) {
+      isDarkStatusBar = true;
       _setDarkStatusBar(); // white icons
     }
   }
@@ -107,45 +142,51 @@ class _AnimeDetailScreenState extends State<AnimeDetailScreen> {
           clipBehavior: Clip.none,
           children: [
             // 🌈 BANNER
-            ClipRRect(
-              borderRadius: const BorderRadius.only(
-                bottomLeft: Radius.circular(35),
-                bottomRight: Radius.circular(35),
-              ),
-              child: SizedBox(
-                height: 260,
-                width: double.infinity,
-                child: Stack(
-                  fit: StackFit.expand,
-                  children: [
-                    Container(
-                      decoration: BoxDecoration(
-                        image: DecorationImage(
-                          image: NetworkImage(banner),
+            RepaintBoundary(
+              child: ClipRRect(
+                borderRadius: const BorderRadius.only(
+                  bottomLeft: Radius.circular(30),
+                  bottomRight: Radius.circular(30),
+                ),
+                child: SizedBox(
+                  height: 260,
+                  width: double.infinity,
+                  child: AnimatedBuilder(
+                    animation: _bannerAnimation,
+                    builder: (context, child) {
+                      return Transform.scale(
+                        scale: _bannerAnimation.value,
+                        child: child,
+                      );
+                    },
+                    child: Stack(
+                      fit: StackFit.expand,
+                      children: [
+                        CachedNetworkImage(
+                          imageUrl: banner,
                           fit: BoxFit.cover,
+                          memCacheWidth: 800,
+                          placeholder: (context, url) =>
+                              Container(color: Colors.grey[900]),
+                          errorWidget: (context, url, error) =>
+                              Container(color: Colors.grey[900]),
                         ),
-                      ),
-                    ),
-                    // 2. Blur + Linear Gradient Overlay
-                    BackdropFilter(
-                      filter: ImageFilter.blur(sigmaX: 1, sigmaY: 1),
-                      child: Container(
-                        decoration: BoxDecoration(
-                          gradient: LinearGradient(
-                            begin: Alignment.topCenter,
-                            end: Alignment.bottomCenter,
-                            colors: [
-                              Colors.black.withOpacity(
-                                0.2,
-                              ), // Light dark at top
-                              Colors.black.withOpacity(0.7), // Darker at bottom
-                            ],
-                            stops: const [0.0, 1.0],
+                        Container(
+                          decoration: BoxDecoration(
+                            gradient: LinearGradient(
+                              begin: Alignment.topCenter,
+                              end: Alignment.bottomCenter,
+                              colors: [
+                                Colors.black.withOpacity(0.3),
+                                Colors.black.withOpacity(0.7),
+                              ],
+                              stops: const [0.0, 1.0],
+                            ),
                           ),
                         ),
-                      ),
+                      ],
                     ),
-                  ],
+                  ),
                 ),
               ),
             ),
@@ -156,24 +197,122 @@ class _AnimeDetailScreenState extends State<AnimeDetailScreen> {
               left: 0,
               right: 0,
               child: Center(
-                child: Container(
-                  decoration: BoxDecoration(
-                    borderRadius: BorderRadius.circular(16),
-                    boxShadow: [
-                      BoxShadow(
-                        color: Colors.black.withOpacity(0.25),
-                        blurRadius: 20,
-                        offset: const Offset(0, 10),
-                      ),
-                    ],
-                  ),
-                  child: ClipRRect(
-                    borderRadius: BorderRadius.circular(16),
-                    child: Image.network(
-                      poster,
-                      height: 300,
-                      width: 210,
-                      fit: BoxFit.cover,
+                child: RepaintBoundary(
+                  child: Container(
+                    width: 210,
+                    height: 300,
+                    decoration: BoxDecoration(
+                      borderRadius: BorderRadius.circular(16),
+                      boxShadow: [
+                        BoxShadow(
+                          color: Colors.black.withOpacity(0.25),
+                          blurRadius: 20,
+                          offset: const Offset(0, 10),
+                        ),
+                      ],
+                    ),
+                    child: Stack(
+                      clipBehavior: Clip.none,
+                      children: [
+                        ClipRRect(
+                          borderRadius: BorderRadius.circular(16),
+                          child: CachedNetworkImage(
+                            imageUrl: poster,
+                            height: 300,
+                            width: 210,
+                            fit: BoxFit.cover,
+                            memCacheWidth: 420,
+                            memCacheHeight: 600,
+                            placeholder: (context, url) =>
+                                Container(color: Colors.grey[300]),
+                            errorWidget: (context, url, error) => Container(
+                              color: Colors.grey[300],
+                              child: const Icon(Icons.broken_image),
+                            ),
+                          ),
+                        ),
+                        // Green pulsing dot for airing anime (bottom right)
+                        if (widget.anime['status'] == 'RELEASING')
+                          Positioned(
+                            bottom: 4,
+                            right: 4,
+                            child: RepaintBoundary(
+                              child: AnimatedBuilder(
+                                animation: _dotAnimationController,
+                                builder: (context, child) {
+                                  final value = _dotAnimationController.value;
+                                  // Create a second staggered wave
+                                  final value2 = (value >= 0.5)
+                                      ? value - 0.5
+                                      : value + 0.5;
+
+                                  return SizedBox(
+                                    width: 24,
+                                    height: 24,
+                                    child: Stack(
+                                      alignment: Alignment.center,
+                                      children: [
+                                        // First Ripple Ring
+                                        if (value < 0.95)
+                                          Container(
+                                            width: 8 + (value * 16),
+                                            height: 8 + (value * 16),
+                                            decoration: BoxDecoration(
+                                              shape: BoxShape.circle,
+                                              border: Border.all(
+                                                color: Color.fromRGBO(
+                                                  105,
+                                                  240,
+                                                  174,
+                                                  (1.0 - value) * 0.8,
+                                                ),
+                                                width: 1.5,
+                                              ),
+                                            ),
+                                          ),
+                                        // Second Ripple Ring (Staggered)
+                                        if (value2 < 0.95)
+                                          Container(
+                                            width: 8 + (value2 * 16),
+                                            height: 8 + (value2 * 16),
+                                            decoration: BoxDecoration(
+                                              shape: BoxShape.circle,
+                                              border: Border.all(
+                                                color: Color.fromRGBO(
+                                                  105,
+                                                  240,
+                                                  174,
+                                                  (1.0 - value2) * 0.8,
+                                                ),
+                                                width: 1.5,
+                                              ),
+                                            ),
+                                          ),
+                                        // Center Dot (const child)
+                                        child!,
+                                      ],
+                                    ),
+                                  );
+                                },
+                                child: Container(
+                                  width: 8,
+                                  height: 8,
+                                  decoration: BoxDecoration(
+                                    color: const Color(0xFF69F0AE),
+                                    shape: BoxShape.circle,
+                                    boxShadow: const [
+                                      BoxShadow(
+                                        color: Color(0x9969F0AE),
+                                        blurRadius: 6,
+                                        spreadRadius: 1,
+                                      ),
+                                    ],
+                                  ),
+                                ),
+                              ),
+                            ),
+                          ),
+                      ],
                     ),
                   ),
                 ),
@@ -299,37 +438,44 @@ class _AnimeDetailScreenState extends State<AnimeDetailScreen> {
       }
     }
 
-    return Container(
-      margin: const EdgeInsets.symmetric(horizontal: 20, vertical: 10),
-      padding: const EdgeInsets.symmetric(vertical: 10, horizontal: 8),
-      decoration: BoxDecoration(
-        color: Colors.white,
-        borderRadius: BorderRadius.circular(20),
-        boxShadow: [
-          BoxShadow(
-            color: Colors.black.withOpacity(0.12),
-            blurRadius: 12,
-            offset: const Offset(0, 4),
-          ),
-        ],
-      ),
-      child: Row(
-        mainAxisAlignment: MainAxisAlignment.spaceAround,
-        children: [
-          _buildStatItem(Icons.star_rounded, Colors.amber, "$score%", "Score"),
-          _buildStatItem(
-            Icons.favorite_rounded,
-            Colors.pinkAccent,
-            popularity,
-            "Popular",
-          ),
-          _buildStatItem(
-            Icons.emoji_events_rounded,
-            Colors.blueAccent,
-            rank,
-            "Rank",
-          ),
-        ],
+    return RepaintBoundary(
+      child: Container(
+        margin: const EdgeInsets.symmetric(horizontal: 20, vertical: 10),
+        padding: const EdgeInsets.symmetric(vertical: 10, horizontal: 8),
+        decoration: BoxDecoration(
+          color: Colors.white,
+          borderRadius: BorderRadius.circular(20),
+          boxShadow: [
+            BoxShadow(
+              color: Colors.black.withOpacity(0.12),
+              blurRadius: 12,
+              offset: const Offset(0, 4),
+            ),
+          ],
+        ),
+        child: Row(
+          mainAxisAlignment: MainAxisAlignment.spaceAround,
+          children: [
+            _buildStatItem(
+              Icons.star_rounded,
+              Colors.amber,
+              "$score%",
+              "Score",
+            ),
+            _buildStatItem(
+              Icons.favorite_rounded,
+              Colors.pinkAccent,
+              popularity,
+              "Popular",
+            ),
+            _buildStatItem(
+              Icons.emoji_events_rounded,
+              Colors.blueAccent,
+              rank,
+              "Rank",
+            ),
+          ],
+        ),
       ),
     );
   }
@@ -387,42 +533,194 @@ class _AnimeDetailScreenState extends State<AnimeDetailScreen> {
     final genres = anime['genres'] ?? [];
     if (genres.isEmpty) return const SizedBox.shrink();
 
-    return Padding(
-      padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 12),
+    return RepaintBoundary(
+      child: Container(
+        width: double.infinity,
+        margin: const EdgeInsets.symmetric(horizontal: 20, vertical: 12),
+        // Top: 24 to match Description title. Bottom: 16 for a balanced but compact look.
+        padding: const EdgeInsets.fromLTRB(24, 12, 24, 18),
+        decoration: BoxDecoration(
+          color: Colors.white,
+          borderRadius: BorderRadius.circular(20),
+          boxShadow: [
+            BoxShadow(
+              color: Colors.black.withOpacity(0.15),
+              blurRadius: 20,
+              offset: const Offset(0, 4),
+            ),
+          ],
+        ),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            const Text(
+              "Genres",
+              style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
+            ),
+            const SizedBox(
+              height: 16,
+            ), // Restored to match Description section spacing
+            Wrap(
+              alignment: WrapAlignment.start,
+              spacing: 6,
+              runSpacing: 6,
+              children: genres.map<Widget>((genre) {
+                return GestureDetector(
+                  onTap: () {
+                    // AniList API genres are case-sensitive and returned in Title Case
+                    // (e.g., "Action", "Comedy", "Sci-Fi")
+                    Navigator.push(
+                      context,
+                      PageRouteBuilder(
+                        pageBuilder: (context, animation, secondaryAnimation) =>
+                            SearchScreen(initialGenre: genre.toString().trim()),
+                        transitionsBuilder:
+                            (context, animation, secondaryAnimation, child) {
+                              const begin = Offset(0.0, 1.0);
+                              const end = Offset.zero;
+                              const curve = Curves.easeOutCubic;
+
+                              var tween = Tween(
+                                begin: begin,
+                                end: end,
+                              ).chain(CurveTween(curve: curve));
+
+                              return SlideTransition(
+                                position: animation.drive(tween),
+                                child: child,
+                              );
+                            },
+                      ),
+                    );
+                  },
+                  child: Container(
+                    padding: const EdgeInsets.symmetric(
+                      horizontal: 10,
+                      vertical: 5,
+                    ),
+                    decoration: BoxDecoration(
+                      color: const Color(0xFF714FDC).withOpacity(0.10),
+                      borderRadius: BorderRadius.circular(20),
+                      border: Border.all(color: const Color(0xFFE8E8E8)),
+                    ),
+                    child: Text(
+                      genre,
+                      style: const TextStyle(
+                        fontSize: 12,
+                        fontWeight: FontWeight.w600,
+                        color: Color(0xFF714FDC),
+                      ),
+                    ),
+                  ),
+                );
+              }).toList(),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  Widget _buildStreamingSites(Map<String, dynamic> anime) {
+    final externalLinks = anime['externalLinks'] as List?;
+    if (externalLinks == null) return const SizedBox.shrink();
+
+    final streamingLinks = externalLinks
+        .where((link) => link['type'] == 'STREAMING')
+        .toList();
+
+    if (streamingLinks.isEmpty) return const SizedBox.shrink();
+
+    return Container(
+      width: double.infinity,
+      margin: const EdgeInsets.symmetric(horizontal: 20, vertical: 20),
+      padding: const EdgeInsets.all(16),
+      decoration: BoxDecoration(
+        color: Colors.white,
+        borderRadius: BorderRadius.circular(25),
+        boxShadow: [
+          BoxShadow(
+            color: Colors.black.withOpacity(0.2),
+            blurRadius: 10,
+            offset: const Offset(0, 1),
+          ),
+        ],
+      ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           const Text(
-            "Genres",
+            "Streaming Sites",
             style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
           ),
+          const SizedBox(height: 12),
+          Center(
+            child: Wrap(
+              alignment: WrapAlignment.center,
+              spacing: 10,
+              runSpacing: 10,
+              children: streamingLinks.map<Widget>((link) {
+                final site = link['site'] ?? "Unknown";
+                final url = link['url'];
+                final colorHex = link['color'];
+                Color color;
+                if (colorHex != null) {
+                  try {
+                    color = Color(
+                      int.parse(colorHex.substring(1), radix: 16) + 0xFF000000,
+                    );
+                  } catch (e) {
+                    color = AppTheme.primary;
+                  }
+                } else {
+                  color = AppTheme.primary;
+                }
 
-          const SizedBox(height: 10),
-
-          Wrap(
-            alignment: WrapAlignment.start,
-            spacing: 10,
-            runSpacing: 10,
-            children: genres.map<Widget>((genre) {
-              return Container(
-                padding: const EdgeInsets.symmetric(
-                  horizontal: 14,
-                  vertical: 8,
-                ),
-                decoration: BoxDecoration(
-                  color: const Color(0xFF714FDC).withOpacity(0.10),
-                  borderRadius: BorderRadius.circular(20),
-                ),
-                child: Text(
-                  genre,
-                  style: const TextStyle(
-                    fontSize: 13,
-                    fontWeight: FontWeight.w600,
-                    color: Color(0xFF714FDC),
+                return GestureDetector(
+                  onTap: () async {
+                    if (url != null) {
+                      final uri = Uri.parse(url);
+                      try {
+                        if (!await launchUrl(
+                          uri,
+                          mode: LaunchMode.externalApplication,
+                        )) {
+                          debugPrint("Could not launch $url");
+                        }
+                      } catch (e) {
+                        debugPrint("Error launching URL: $e");
+                      }
+                    }
+                  },
+                  child: Container(
+                    padding: const EdgeInsets.symmetric(
+                      horizontal: 12,
+                      vertical: 8,
+                    ),
+                    decoration: BoxDecoration(
+                      color: color.withOpacity(0.1),
+                      borderRadius: BorderRadius.circular(12),
+                      border: Border.all(color: color.withOpacity(0.3)),
+                    ),
+                    child: Row(
+                      mainAxisSize: MainAxisSize.min,
+                      children: [
+                        Text(
+                          site,
+                          style: TextStyle(
+                            color: color,
+                            fontWeight: FontWeight.bold,
+                            fontSize: 13,
+                          ),
+                        ),
+                        const SizedBox(width: 4),
+                        Icon(Icons.open_in_new, size: 14, color: color),
+                      ],
+                    ),
                   ),
-                ),
-              );
-            }).toList(),
+                );
+              }).toList(),
+            ),
           ),
         ],
       ),
@@ -430,32 +728,86 @@ class _AnimeDetailScreenState extends State<AnimeDetailScreen> {
   }
 
   Widget buildTabsContainer(Map<String, dynamic> anime) {
-    return Column(
-      children: [
-        // Tab Buttons
-        Container(
-          margin: const EdgeInsets.symmetric(horizontal: 20),
-          padding: const EdgeInsets.all(4),
-          decoration: BoxDecoration(
-            color: Colors.grey.shade200,
-            borderRadius: BorderRadius.circular(25),
+    return RepaintBoundary(
+      child: Column(
+        children: [
+          // Tab Buttons
+          Container(
+            margin: const EdgeInsets.symmetric(horizontal: 20),
+            padding: const EdgeInsets.all(4),
+            decoration: BoxDecoration(
+              color: Colors.grey.shade200,
+              borderRadius: BorderRadius.circular(25),
+            ),
+            child: Row(
+              children: [
+                _buildTabButton("Information", 0),
+                _buildTabButton("Characters", 1),
+                _buildTabButton("Relations", 2),
+              ],
+            ),
           ),
-          child: Row(
-            children: [
-              _buildTabButton("Information", 0),
-              _buildTabButton("Characters", 1),
-              _buildTabButton("Relations", 2),
-            ],
-          ),
-        ),
-        const SizedBox(height: 20),
+          const SizedBox(height: 20),
 
-        // Tab Content
-        AnimatedSwitcher(
-          duration: const Duration(milliseconds: 300),
-          child: _buildTabContent(anime),
-        ),
-      ],
+          // Tab Content - Enhanced morphing animation
+          Container(
+            margin: const EdgeInsets.symmetric(horizontal: 20),
+            decoration: BoxDecoration(
+              color: Colors.white,
+              borderRadius: BorderRadius.circular(20),
+              boxShadow: [
+                BoxShadow(
+                  color: Colors.black.withOpacity(0.15),
+                  blurRadius: 20,
+                  offset: const Offset(0, 4),
+                ),
+              ],
+            ),
+            child: ClipRRect(
+              borderRadius: BorderRadius.circular(20),
+              child: AnimatedSize(
+                duration: const Duration(milliseconds: 450),
+                curve: Curves.easeInOutCubic,
+                alignment: Alignment.topCenter,
+                child: AnimatedSwitcher(
+                  duration: const Duration(milliseconds: 200),
+                  switchInCurve: Curves.easeInOutCubic,
+                  switchOutCurve: Curves.easeInOutCubic,
+                  layoutBuilder: (currentChild, previousChildren) {
+                    return Stack(
+                      alignment: Alignment.topCenter,
+                      children: <Widget>[
+                        ...previousChildren,
+                        if (currentChild != null) currentChild,
+                      ],
+                    );
+                  },
+                  transitionBuilder:
+                      (Widget child, Animation<double> animation) {
+                        return FadeTransition(
+                          opacity: animation,
+                          child: SlideTransition(
+                            position:
+                                Tween<Offset>(
+                                  begin: const Offset(0.0, 0.05),
+                                  end: Offset.zero,
+                                ).animate(
+                                  CurvedAnimation(
+                                    parent: animation,
+                                    curve: Curves.easeOutCubic,
+                                  ),
+                                ),
+                            child: child,
+                          ),
+                        );
+                      },
+                  child: _buildTabContent(anime),
+                ),
+              ),
+            ),
+          ),
+        ],
+      ),
     );
   }
 
@@ -472,7 +824,7 @@ class _AnimeDetailScreenState extends State<AnimeDetailScreen> {
             boxShadow: isSelected
                 ? [
                     BoxShadow(
-                      color: Colors.black.withOpacity(0.1),
+                      color: Colors.black.withOpacity(0.4),
                       blurRadius: 4,
                       offset: const Offset(0, 2),
                     ),
@@ -496,11 +848,20 @@ class _AnimeDetailScreenState extends State<AnimeDetailScreen> {
   Widget _buildTabContent(Map<String, dynamic> anime) {
     switch (selectedTab) {
       case 0:
-        return _buildInformationTab(anime);
+        return KeyedSubtree(
+          key: const ValueKey('info'),
+          child: _buildInformationTab(anime),
+        );
       case 1:
-        return _buildCharactersTab(anime);
+        return KeyedSubtree(
+          key: const ValueKey('chars'),
+          child: _buildCharactersTab(anime),
+        );
       case 2:
-        return _buildRelationsTab(anime);
+        return KeyedSubtree(
+          key: const ValueKey('rels'),
+          child: _buildRelationsTab(anime),
+        );
       default:
         return const SizedBox.shrink();
     }
@@ -540,57 +901,66 @@ class _AnimeDetailScreenState extends State<AnimeDetailScreen> {
     final startDate = formatDate(anime['startDate']);
     final endDate = formatDate(anime['endDate']);
     final season = anime['season'] != null
-        ? "${anime['season']} ${anime['seasonYear'] ?? ''}"
+        ? "${anime['season'][0].toUpperCase()}${anime['season'].substring(1).toLowerCase()} ${anime['seasonYear'] ?? ''}"
         : "Unknown";
-    final source = anime['source']?.replaceAll('_', ' ') ?? "Unknown";
+    final sourceRaw = anime['source']?.replaceAll('_', ' ') ?? "Unknown";
+    final source = sourceRaw.isNotEmpty
+        ? "${sourceRaw[0].toUpperCase()}${sourceRaw.substring(1).toLowerCase()}"
+        : "Unknown";
     final duration = anime['duration'] != null
         ? "${anime['duration']} mins"
         : "Unknown";
 
-    return Container(
-      margin: const EdgeInsets.symmetric(horizontal: 20),
+    return Padding(
       padding: const EdgeInsets.all(20),
-      decoration: BoxDecoration(
-        color: Colors.white,
-        borderRadius: BorderRadius.circular(20),
-        boxShadow: [
-          BoxShadow(
-            color: Colors.black.withOpacity(0.05),
-            blurRadius: 10,
-            offset: const Offset(0, 4),
-          ),
-        ],
-      ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           // Details Rows
-          _buildDetailRow("Duration", duration),
-          _buildDetailRow("Start Date", startDate),
-          _buildDetailRow("End Date", endDate),
-          _buildDetailRow("Season", season),
-          _buildDetailRow("Source", source),
+          _buildDetailRow("Duration", duration, Icons.schedule_rounded),
+          _buildDetailRow(
+            "Start Date",
+            startDate,
+            Icons.calendar_today_rounded,
+          ),
+          _buildDetailRow("End Date", endDate, Icons.event_rounded),
+          _buildDetailRow("Season", season, Icons.calendar_month_rounded),
+          _buildDetailRow("Source", source, Icons.local_offer_rounded),
 
           const SizedBox(height: 10),
-          const Divider(),
+          Divider(color: Colors.grey.withOpacity(0.5)),
           const SizedBox(height: 10),
 
           // Studio
-          Text(
-            "Studio",
-            style: TextStyle(
-              fontSize: 14,
-              color: Colors.grey.shade600,
-              fontWeight: FontWeight.w500,
-            ),
+          // Studio
+          Row(
+            children: [
+              Icon(
+                Icons.movie_creation_rounded,
+                size: 20,
+                color: AppTheme.primary.withOpacity(0.75),
+              ),
+              const SizedBox(width: 8),
+              Text(
+                "Studio",
+                style: TextStyle(
+                  fontSize: 14,
+                  color: Colors.grey.shade600,
+                  fontWeight: FontWeight.w500,
+                ),
+              ),
+            ],
           ),
           const SizedBox(height: 4),
-          Text(
-            studioName,
-            style: const TextStyle(
-              fontSize: 15,
-              fontWeight: FontWeight.bold,
-              color: Colors.black87,
+          Padding(
+            padding: const EdgeInsets.only(left: 26),
+            child: Text(
+              studioName,
+              style: const TextStyle(
+                fontSize: 15,
+                fontWeight: FontWeight.bold,
+                color: Colors.black87,
+              ),
             ),
           ),
 
@@ -668,55 +1038,19 @@ class _AnimeDetailScreenState extends State<AnimeDetailScreen> {
                 ),
               ),
             ),
-
-            const SizedBox(height: 12),
-
-            // Watch Trailer Button
-            Center(
-              child: ElevatedButton.icon(
-                onPressed: () async {
-                  final url = Uri.parse(
-                    'https://www.youtube.com/watch?v=${trailer['id']}',
-                  );
-                  try {
-                    if (!await launchUrl(
-                      url,
-                      mode: LaunchMode.externalApplication,
-                    )) {
-                      throw 'Could not launch $url';
-                    }
-                  } catch (e) {
-                    debugPrint("Error launching URL: $e");
-                  }
-                },
-                icon: const Icon(Icons.play_arrow_rounded, size: 18),
-                label: const Text("Trailer"),
-                style: ElevatedButton.styleFrom(
-                  backgroundColor: Colors.red.shade50,
-                  foregroundColor: Colors.red,
-                  elevation: 0,
-                  padding: const EdgeInsets.symmetric(
-                    vertical: 12,
-                    horizontal: 24,
-                  ),
-                  shape: RoundedRectangleBorder(
-                    borderRadius: BorderRadius.circular(12),
-                  ),
-                ),
-              ),
-            ),
           ],
         ],
       ),
     );
   }
 
-  Widget _buildDetailRow(String label, String value) {
+  Widget _buildDetailRow(String label, String value, IconData icon) {
     return Padding(
       padding: const EdgeInsets.only(bottom: 12),
       child: Row(
-        mainAxisAlignment: MainAxisAlignment.spaceBetween,
         children: [
+          Icon(icon, size: 20, color: AppTheme.primary.withOpacity(0.75)),
+          const SizedBox(width: 8),
           Text(
             label,
             style: TextStyle(
@@ -725,6 +1059,7 @@ class _AnimeDetailScreenState extends State<AnimeDetailScreen> {
               fontWeight: FontWeight.w500,
             ),
           ),
+          const Spacer(),
           Text(
             value,
             style: const TextStyle(
@@ -739,94 +1074,135 @@ class _AnimeDetailScreenState extends State<AnimeDetailScreen> {
   }
 
   Widget _buildCharactersTab(Map<String, dynamic> anime) {
-    final characters = anime['characters']?['nodes'] as List?;
+    final characters = anime['characters']?['edges'] as List?;
+    // Show loading indicator if characters are not yet loaded (null) but not empty list (explicitly no chars)
+    // Actually API returns null if not fetched yet, empty list if fetched but none.
+    // However, since we initialize with basic data, 'characters' key might be missing entirely.
+    if (characters == null && widget.anime['characters'] == null) {
+      return const SizedBox(
+        height: 175,
+        child: Center(child: CircularProgressIndicator()),
+      );
+    }
+
     if (characters == null || characters.isEmpty) {
       return const Center(child: Text("No characters found"));
     }
 
-    return SizedBox(
-      height: 180, // Increased height
-      child: ListView.separated(
-        padding: const EdgeInsets.symmetric(horizontal: 20),
-        scrollDirection: Axis.horizontal,
-        itemCount: characters.length,
-        separatorBuilder: (context, index) => const SizedBox(width: 14),
-        itemBuilder: (context, index) {
-          final char = characters[index];
-          final name = char['name']?['full'] ?? "Unknown";
-          final image = char['image']?['medium'];
-          final id = char['id'];
+    return Padding(
+      padding: const EdgeInsets.fromLTRB(0, 20, 0, 5),
 
-          return GestureDetector(
-            onTap: () {
-              if (id != null) {
-                showModalBottomSheet(
-                  context: context,
-                  isScrollControlled: true,
-                  backgroundColor: Colors.transparent,
-                  builder: (context) => DraggableScrollableSheet(
-                    initialChildSize: 0.6,
-                    minChildSize: 0.4,
-                    maxChildSize: 1.0,
-                    builder: (context, scrollController) {
-                      return ClipRRect(
-                        borderRadius: const BorderRadius.vertical(
-                          top: Radius.circular(20),
-                        ),
-                        child: CharacterDetailScreen(
-                          characterId: id,
-                          placeholderName: name,
-                          placeholderImage: image,
-                          scrollController: scrollController,
-                        ),
-                      );
-                    },
-                  ),
-                );
-              }
-            },
-            child: SizedBox(
-              width: 130, // Increased width
-              child: Column(
-                children: [
-                  ClipRRect(
-                    borderRadius: BorderRadius.circular(60), // Increased radius
-                    child: image != null
-                        ? Image.network(
-                            image,
-                            width: 120, // Increased size
-                            height: 120, // Increased size
-                            fit: BoxFit.cover,
-                          )
-                        : Container(
-                            width: 120, // Increased size
-                            height: 120, // Increased size
-                            color: Colors.grey[300],
-                            child: const Icon(Icons.person),
+      child: SizedBox(
+        height: 175, // Reduced height to fit content tightly
+        child: ListView.separated(
+          padding: const EdgeInsets.symmetric(horizontal: 20),
+          scrollDirection: Axis.horizontal,
+          itemCount: characters.length,
+          addAutomaticKeepAlives: false,
+          addRepaintBoundaries: true,
+          separatorBuilder: (context, index) => const SizedBox(width: 14),
+          itemBuilder: (context, index) {
+            final edge = characters[index];
+            final node = edge['node'];
+            final role = edge['role']?.toString().toUpperCase() ?? "UNKNOWN";
+
+            if (node == null) return const SizedBox.shrink();
+
+            final name = node['name']?['full'] ?? "Unknown";
+            final image = node['image']?['medium'];
+            final id = node['id'];
+
+            return GestureDetector(
+              onTap: () {
+                if (id != null) {
+                  showModalBottomSheet(
+                    context: context,
+                    isScrollControlled: true,
+                    backgroundColor: Colors.transparent,
+                    builder: (context) => DraggableScrollableSheet(
+                      initialChildSize: 0.6,
+                      minChildSize: 0.4,
+                      maxChildSize: 1.0,
+                      builder: (context, scrollController) {
+                        return ClipRRect(
+                          borderRadius: const BorderRadius.vertical(
+                            top: Radius.circular(20),
                           ),
-                  ),
-                  const SizedBox(height: 8),
-                  Text(
-                    name,
-                    textAlign: TextAlign.center,
-                    maxLines: 2,
-                    overflow: TextOverflow.ellipsis,
-                    style: const TextStyle(
-                      fontSize: 12,
-                      fontWeight: FontWeight.w600,
+                          child: CharacterDetailScreen(
+                            characterId: id,
+                            placeholderName: name,
+                            placeholderImage: image,
+                            scrollController: scrollController,
+                          ),
+                        );
+                      },
                     ),
-                  ),
-                ],
+                  );
+                }
+              },
+              child: SizedBox(
+                width: 130, // Increased width
+                child: Column(
+                  children: [
+                    ClipRRect(
+                      borderRadius: BorderRadius.circular(
+                        60,
+                      ), // Increased radius
+                      child: image != null
+                          ? Image.network(
+                              image,
+                              width: 120, // Increased size
+                              height: 120, // Increased size
+                              fit: BoxFit.cover,
+                            )
+                          : Container(
+                              width: 120, // Increased size
+                              height: 120, // Increased size
+                              color: Colors.grey[300],
+                              child: const Icon(Icons.person),
+                            ),
+                    ),
+                    const SizedBox(height: 8),
+                    Text(
+                      name,
+                      textAlign: TextAlign.center,
+                      maxLines: 2,
+                      overflow: TextOverflow.ellipsis,
+                      style: const TextStyle(
+                        fontSize: 12,
+                        fontWeight: FontWeight.w600,
+                      ),
+                    ),
+                    const SizedBox(height: 4),
+                    Text(
+                      role,
+                      textAlign: TextAlign.center,
+                      style: TextStyle(
+                        fontSize: 10,
+                        color: Colors.grey.shade600,
+                        fontWeight: FontWeight.w500,
+                      ),
+                    ),
+                  ],
+                ),
               ),
-            ),
-          );
-        },
+            );
+          },
+        ),
       ),
     );
   }
 
   Widget _buildRelationsTab(Map<String, dynamic> anime) {
     final relations = anime['relations']?['edges'] as List?;
+
+    if (relations == null && widget.anime['relations'] == null) {
+      return const SizedBox(
+        height: 220,
+        child: Center(child: CircularProgressIndicator()),
+      );
+    }
+
     if (relations == null || relations.isEmpty) {
       return const Center(child: Text("No relations found"));
     }
@@ -839,81 +1215,86 @@ class _AnimeDetailScreenState extends State<AnimeDetailScreen> {
       return const Center(child: Text("No relations found"));
     }
 
-    return SizedBox(
-      height: 190,
-      child: ListView.separated(
-        padding: const EdgeInsets.symmetric(horizontal: 20),
-        scrollDirection: Axis.horizontal,
-        itemCount: validRelations.length,
-        separatorBuilder: (context, index) => const SizedBox(width: 14),
-        itemBuilder: (context, index) {
-          final edge = validRelations[index];
-          final node = edge['node'];
-          final relationType =
-              edge['relationType']?.replaceAll('_', ' ') ?? 'RELATED';
+    return Padding(
+      padding: const EdgeInsets.fromLTRB(0, 20, 0, 0),
+      child: SizedBox(
+        height: 220,
+        child: ListView.separated(
+          padding: const EdgeInsets.symmetric(horizontal: 20),
+          scrollDirection: Axis.horizontal,
+          itemCount: validRelations.length,
+          addAutomaticKeepAlives: false,
+          addRepaintBoundaries: true,
+          separatorBuilder: (context, index) => const SizedBox(width: 14),
+          itemBuilder: (context, index) {
+            final edge = validRelations[index];
+            final node = edge['node'];
+            final relationType =
+                edge['relationType']?.replaceAll('_', ' ') ?? 'RELATED';
 
-          final title =
-              node['title']?['romaji'] ??
-              node['title']?['english'] ??
-              'Unknown';
-          final image =
-              node['coverImage']?['large'] ?? node['coverImage']?['medium'];
+            final title =
+                node['title']?['romaji'] ??
+                node['title']?['english'] ??
+                'Unknown';
+            final image =
+                node['coverImage']?['large'] ?? node['coverImage']?['medium'];
 
-          return GestureDetector(
-            onTap: () {
-              Navigator.push(
-                context,
-                MaterialPageRoute(
-                  builder: (context) => AnimeDetailScreen(anime: node),
-                ),
-              );
-            },
-            child: SizedBox(
-              width: 90,
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  image != null
-                      ? FadeInImageWidget(
-                          imageUrl: image,
-                          width: 90,
-                          height: 125,
-                        )
-                      : Container(
-                          width: 90,
-                          height: 125,
-                          decoration: BoxDecoration(
-                            color: Colors.grey[300],
-                            borderRadius: BorderRadius.circular(10),
+            return GestureDetector(
+              onTap: () {
+                Navigator.push(
+                  context,
+                  MaterialPageRoute(
+                    builder: (context) => AnimeDetailScreen(anime: node),
+                  ),
+                );
+              },
+              child: SizedBox(
+                width: 110,
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    image != null
+                        ? FadeInImageWidget(
+                            imageUrl: image,
+                            width: 110,
+                            height: 155,
+                          )
+                        : Container(
+                            width: 110,
+                            height: 155,
+                            decoration: BoxDecoration(
+                              color: Colors.grey[300],
+                              borderRadius: BorderRadius.circular(12),
+                            ),
+                            child: const Icon(Icons.image, color: Colors.grey),
                           ),
-                          child: const Icon(Icons.image, color: Colors.grey),
-                        ),
-                  const SizedBox(height: 6),
-                  Text(
-                    relationType,
-                    style: TextStyle(
-                      fontSize: 10,
-                      fontWeight: FontWeight.bold,
-                      color: AppTheme.primary,
-                      letterSpacing: 0.5,
+                    const SizedBox(height: 6),
+                    Text(
+                      relationType,
+                      style: TextStyle(
+                        fontSize: 10,
+                        fontWeight: FontWeight.bold,
+                        color: AppTheme.primary,
+                        letterSpacing: 0.5,
+                      ),
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
                     ),
-                    maxLines: 1,
-                    overflow: TextOverflow.ellipsis,
-                  ),
-                  Text(
-                    title,
-                    style: const TextStyle(
-                      fontSize: 12,
-                      fontWeight: FontWeight.w600,
+                    Text(
+                      title,
+                      style: const TextStyle(
+                        fontSize: 12,
+                        fontWeight: FontWeight.w600,
+                      ),
+                      maxLines: 2,
+                      overflow: TextOverflow.ellipsis,
                     ),
-                    maxLines: 2,
-                    overflow: TextOverflow.ellipsis,
-                  ),
-                ],
+                  ],
+                ),
               ),
-            ),
-          );
-        },
+            );
+          },
+        ),
       ),
     );
   }
@@ -931,83 +1312,87 @@ class _AnimeDetailScreenState extends State<AnimeDetailScreen> {
 
     if (validRecs.isEmpty) return const SizedBox.shrink();
 
-    return Padding(
-      padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 20),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          const Text(
-            "Recommendations",
-            style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
-          ),
-          const SizedBox(height: 15),
-          SizedBox(
-            height: 190, // Reduced height
-            child: ListView.separated(
-              scrollDirection: Axis.horizontal,
-              itemCount: validRecs.length,
-              separatorBuilder: (context, index) => const SizedBox(width: 14),
-              itemBuilder: (context, index) {
-                final rec = validRecs[index];
-                final media = rec['mediaRecommendation'];
-                final title =
-                    media['title']?['romaji'] ??
-                    media['title']?['english'] ??
-                    "Unknown";
-                final image =
-                    media['coverImage']?['large'] ??
-                    media['coverImage']?['medium'];
-
-                return GestureDetector(
-                  onTap: () {
-                    Navigator.push(
-                      context,
-                      MaterialPageRoute(
-                        builder: (context) => AnimeDetailScreen(anime: media),
-                      ),
-                    );
-                  },
-                  child: SizedBox(
-                    width: 110, // Reduced width
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        image != null
-                            ? FadeInImageWidget(
-                                imageUrl: image,
-                                width: 110,
-                                height: 155,
-                              )
-                            : Container(
-                                width: 110,
-                                height: 155,
-                                decoration: BoxDecoration(
-                                  color: Colors.grey[300],
-                                  borderRadius: BorderRadius.circular(12),
-                                ),
-                                child: const Icon(
-                                  Icons.image,
-                                  color: Colors.grey,
-                                ),
-                              ),
-                        const SizedBox(height: 6),
-                        Text(
-                          title,
-                          style: const TextStyle(
-                            fontSize: 12,
-                            fontWeight: FontWeight.w600,
-                          ),
-                          maxLines: 1,
-                          overflow: TextOverflow.ellipsis,
-                        ),
-                      ],
-                    ),
-                  ),
-                );
-              },
+    return RepaintBoundary(
+      child: Padding(
+        padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 20),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            const Text(
+              "Recommendations",
+              style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
             ),
-          ),
-        ],
+            const SizedBox(height: 15),
+            SizedBox(
+              height: 190, // Reduced height
+              child: ListView.separated(
+                scrollDirection: Axis.horizontal,
+                itemCount: validRecs.length,
+                addAutomaticKeepAlives: false,
+                addRepaintBoundaries: true,
+                separatorBuilder: (context, index) => const SizedBox(width: 14),
+                itemBuilder: (context, index) {
+                  final rec = validRecs[index];
+                  final media = rec['mediaRecommendation'];
+                  final title =
+                      media['title']?['romaji'] ??
+                      media['title']?['english'] ??
+                      "Unknown";
+                  final image =
+                      media['coverImage']?['large'] ??
+                      media['coverImage']?['medium'];
+
+                  return GestureDetector(
+                    onTap: () {
+                      Navigator.push(
+                        context,
+                        MaterialPageRoute(
+                          builder: (context) => AnimeDetailScreen(anime: media),
+                        ),
+                      );
+                    },
+                    child: SizedBox(
+                      width: 110, // Reduced width
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          image != null
+                              ? FadeInImageWidget(
+                                  imageUrl: image,
+                                  width: 110,
+                                  height: 155,
+                                )
+                              : Container(
+                                  width: 110,
+                                  height: 155,
+                                  decoration: BoxDecoration(
+                                    color: Colors.grey[300],
+                                    borderRadius: BorderRadius.circular(12),
+                                  ),
+                                  child: const Icon(
+                                    Icons.image,
+                                    color: Colors.grey,
+                                  ),
+                                ),
+                          const SizedBox(height: 6),
+                          Text(
+                            title,
+                            style: const TextStyle(
+                              fontSize: 12,
+                              fontWeight: FontWeight.w600,
+                            ),
+                            maxLines: 1,
+                            overflow: TextOverflow.ellipsis,
+                          ),
+                        ],
+                      ),
+                    ),
+                  );
+                },
+              ),
+            ),
+          ],
+        ),
       ),
     );
   }
@@ -1018,85 +1403,78 @@ class _AnimeDetailScreenState extends State<AnimeDetailScreen> {
         "No description available.";
     final isLong = description.length > 200;
 
-    return Container(
-      margin: const EdgeInsets.symmetric(horizontal: 20, vertical: 12),
-      padding: const EdgeInsets.all(16),
-      decoration: BoxDecoration(
-        color: Colors.white,
-        borderRadius: BorderRadius.circular(20),
-        boxShadow: [
-          BoxShadow(
-            color: Colors.black.withOpacity(0.15),
-            blurRadius: 10,
-            offset: const Offset(0, 4),
-          ),
-        ],
-      ),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          const Text(
-            "Description",
-            style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
-          ),
-          const SizedBox(height: 8),
-          AnimatedCrossFade(
-            firstChild: Text(
-              description,
-              maxLines: 5,
-              overflow: TextOverflow.ellipsis,
-              style: TextStyle(
-                fontSize: 15,
-                color: Colors.grey.shade700,
-                height: 1.5,
-              ),
+    return RepaintBoundary(
+      child: Container(
+        width: double.infinity,
+        margin: const EdgeInsets.symmetric(horizontal: 20, vertical: 12),
+        // Increased padding to narrow text width and add breathing room
+        padding: const EdgeInsets.fromLTRB(24, 16, 24, 18),
+        decoration: BoxDecoration(
+          color: Colors.white,
+          borderRadius: BorderRadius.circular(20),
+          boxShadow: [
+            BoxShadow(
+              color: Colors.black.withOpacity(0.15),
+              blurRadius: 20,
+              offset: const Offset(0, 4),
             ),
-            secondChild: Text(
-              description,
-              style: TextStyle(
-                fontSize: 15,
-                color: Colors.grey.shade700,
-                height: 1.5,
-              ),
+          ],
+        ),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            const Text(
+              "Description",
+              style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
             ),
-            crossFadeState: isDescriptionExpanded
-                ? CrossFadeState.showSecond
-                : CrossFadeState.showFirst,
-            duration: const Duration(milliseconds: 300),
-          ),
-          if (isLong)
-            GestureDetector(
-              onTap: () {
-                setState(() {
-                  isDescriptionExpanded = !isDescriptionExpanded;
-                });
-              },
-              child: Padding(
-                padding: const EdgeInsets.only(top: 12.0),
-                child: Row(
-                  mainAxisAlignment: MainAxisAlignment.center,
-                  children: [
-                    Text(
-                      isDescriptionExpanded ? "View Less" : "View More",
-                      style: const TextStyle(
-                        color: Color(0xFF714FDC),
-                        fontWeight: FontWeight.bold,
-                        fontSize: 14,
-                      ),
-                    ),
-                    const SizedBox(width: 4),
-                    Icon(
-                      isDescriptionExpanded
-                          ? Icons.keyboard_arrow_up
-                          : Icons.keyboard_arrow_down,
-                      color: const Color(0xFF714FDC),
-                      size: 18,
-                    ),
-                  ],
+            // More vertical padding between title and text
+            const SizedBox(height: 16),
+            AnimatedCrossFade(
+              firstChild: Text(
+                description,
+                maxLines: 5,
+                overflow: TextOverflow.ellipsis,
+                style: TextStyle(
+                  fontSize: 15,
+                  color: Colors.grey.shade700,
+                  height: 1.5, // Softer line-height
                 ),
               ),
+              secondChild: Text(
+                description,
+                style: TextStyle(
+                  fontSize: 15,
+                  color: Colors.grey.shade700,
+                  height: 1.5, // Softer line-height
+                ),
+              ),
+              crossFadeState: isDescriptionExpanded
+                  ? CrossFadeState.showSecond
+                  : CrossFadeState.showFirst,
+              duration: const Duration(milliseconds: 300),
             ),
-        ],
+            if (isLong)
+              GestureDetector(
+                onTap: () {
+                  setState(() {
+                    isDescriptionExpanded = !isDescriptionExpanded;
+                  });
+                },
+                child: Padding(
+                  padding: const EdgeInsets.only(top: 16.0),
+                  child: Center(
+                    child: Icon(
+                      isDescriptionExpanded
+                          ? Icons.keyboard_arrow_up_rounded
+                          : Icons.keyboard_arrow_down_rounded, // Chevron arrow
+                      color: const Color(0xFF714FDC),
+                      size: 24, // Slightly larger for emphasis
+                    ),
+                  ),
+                ),
+              ),
+          ],
+        ),
       ),
     );
   }
@@ -1105,37 +1483,98 @@ class _AnimeDetailScreenState extends State<AnimeDetailScreen> {
   Widget build(BuildContext context) {
     return Scaffold(
       backgroundColor: Colors.white,
-      body: Stack(
-        children: [
-          if (isLoading)
-            const SingleChildScrollView(child: AnimeDetailShimmer())
-          else
+      body: AnimatedSwitcher(
+        duration: const Duration(milliseconds: 300),
+        child: Stack(
+          key: ValueKey(isLoading),
+          children: [
             SingleChildScrollView(
               controller: _scrollController,
               child: Column(
                 children: [
                   buildTopSection(context, widget.anime),
                   buildStatsCard(widget.anime),
+                  _buildNextEpisodeWidget(widget.anime),
                   buildGenres(widget.anime),
                   buildDescription(widget.anime),
                   const SizedBox(height: 10),
                   buildTabsContainer(widget.anime),
+                  _buildStreamingSites(widget.anime),
                   buildRecommendations(widget.anime),
+                  const SizedBox(height: 30), // Bottom padding
                 ],
               ),
             ),
 
-          // Back Button
-          Positioned(
-            top: 50,
-            left: 16,
-            child: CircleAvatar(
-              backgroundColor: AppTheme.primary.withOpacity(0.5),
-              child: IconButton(
-                icon: const Icon(Icons.arrow_back, color: Colors.white),
-                onPressed: () => Navigator.pop(context),
+            // Back Button
+            Positioned(
+              top: 50,
+              left: 16,
+              child: CircleAvatar(
+                backgroundColor: AppTheme.primary.withOpacity(0.5),
+                child: IconButton(
+                  icon: const Icon(Icons.arrow_back, color: Colors.white),
+                  onPressed: () => Navigator.pop(context),
+                ),
               ),
             ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  Widget _buildNextEpisodeWidget(Map<String, dynamic> anime) {
+    if (anime['status'] != 'RELEASING' || anime['nextAiringEpisode'] == null) {
+      return const SizedBox.shrink();
+    }
+
+    final nextEp = anime['nextAiringEpisode'];
+    final airingAt = nextEp['airingAt'] as int;
+    final firingDate = DateTime.fromMillisecondsSinceEpoch(airingAt * 1000);
+    final now = DateTime.now();
+    final diff = firingDate.difference(now);
+
+    if (diff.isNegative) return const SizedBox.shrink();
+
+    final days = diff.inDays;
+    final hours = diff.inHours % 24;
+    final minutes = diff.inMinutes % 60;
+
+    return Container(
+      margin: const EdgeInsets.fromLTRB(20, 0, 20, 20),
+      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+      decoration: BoxDecoration(
+        color: AppTheme.primary.withOpacity(0.1),
+        borderRadius: BorderRadius.circular(16),
+        border: Border.all(color: AppTheme.primary.withOpacity(0.3)),
+      ),
+      child: Row(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          Icon(Icons.timer_rounded, color: AppTheme.primary),
+          const SizedBox(width: 12),
+          Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Text(
+                "Ep ${nextEp['episode']} Airing In",
+                style: TextStyle(
+                  fontSize: 12,
+                  color: AppTheme.primary.withOpacity(0.8),
+                  fontWeight: FontWeight.bold,
+                ),
+              ),
+              const SizedBox(height: 2),
+              Text(
+                "${days}d ${hours}h ${minutes}m",
+                style: TextStyle(
+                  fontSize: 16,
+                  color: AppTheme.primary,
+                  fontWeight: FontWeight.bold,
+                ),
+              ),
+            ],
           ),
         ],
       ),
@@ -1144,129 +1583,239 @@ class _AnimeDetailScreenState extends State<AnimeDetailScreen> {
 
   @override
   void dispose() {
+    _countdownTimer?.cancel();
     _scrollController.dispose();
+    _bannerAnimationController.dispose();
+    _dotAnimationController.dispose();
     super.dispose();
   }
 }
 
 class AnimeDetailShimmer extends StatelessWidget {
-  const AnimeDetailShimmer({super.key});
+  final Map<String, dynamic> anime;
+  final Animation<double> bannerAnimation;
+
+  const AnimeDetailShimmer({
+    super.key,
+    required this.anime,
+    required this.bannerAnimation,
+  });
 
   @override
   Widget build(BuildContext context) {
     return Shimmer.fromColors(
       baseColor: Colors.grey.shade300,
       highlightColor: Colors.grey.shade100,
+      period: const Duration(milliseconds: 1200),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          // Banner shimmer
-          Container(
-            height: 260,
-            width: double.infinity,
-            decoration: BoxDecoration(
-              color: Colors.grey.shade300,
-              borderRadius: const BorderRadius.only(
-                bottomLeft: Radius.circular(35),
-                bottomRight: Radius.circular(35),
+          // Banner + Poster Stack
+          Stack(
+            clipBehavior: Clip.none,
+            children: [
+              // Animated Banner (loads immediately)
+              RepaintBoundary(
+                child: ClipRRect(
+                  borderRadius: const BorderRadius.only(
+                    bottomLeft: Radius.circular(30),
+                    bottomRight: Radius.circular(30),
+                  ),
+                  child: SizedBox(
+                    height: 260,
+                    width: double.infinity,
+                    child: AnimatedBuilder(
+                      animation: bannerAnimation,
+                      builder: (context, child) {
+                        return Transform.scale(
+                          scale: bannerAnimation.value,
+                          child: child,
+                        );
+                      },
+                      child: Stack(
+                        fit: StackFit.expand,
+                        children: [
+                          Image.network(
+                            anime['bannerImage'] ??
+                                anime['coverImage']?['large'],
+                            fit: BoxFit.cover,
+                            cacheWidth: 800,
+                            gaplessPlayback: true,
+                          ),
+                          Container(
+                            decoration: BoxDecoration(
+                              gradient: LinearGradient(
+                                begin: Alignment.topCenter,
+                                end: Alignment.bottomCenter,
+                                colors: [
+                                  Colors.black.withOpacity(0.3),
+                                  Colors.black.withOpacity(0.7),
+                                ],
+                                stops: const [0.0, 1.0],
+                              ),
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
+                  ),
+                ),
               ),
-            ),
+              // Poster shimmer (overlapping)
+              Positioned(
+                bottom: -170,
+                left: 0,
+                right: 0,
+                child: Center(
+                  child: Container(
+                    width: 210,
+                    height: 300,
+                    decoration: BoxDecoration(
+                      color: Colors.grey.shade300,
+                      borderRadius: BorderRadius.circular(16),
+                    ),
+                  ),
+                ),
+              ),
+            ],
           ),
 
-          const SizedBox(height: 140),
-
-          // Poster shimmer (center)
-          Center(
-            child: Container(
-              width: 210,
-              height: 300,
-              decoration: BoxDecoration(
-                color: Colors.grey.shade300,
-                borderRadius: BorderRadius.circular(16),
-              ),
-            ),
-          ),
-
-          const SizedBox(height: 20),
+          const SizedBox(height: 180),
 
           // Title
           Padding(
-            padding: const EdgeInsets.symmetric(horizontal: 16),
-            child: Container(
-              height: 20,
-              width: 200,
-              decoration: BoxDecoration(
-                color: Colors.grey.shade300,
-                borderRadius: BorderRadius.circular(8),
+            padding: const EdgeInsets.symmetric(horizontal: 20),
+            child: Center(
+              child: Container(
+                height: 24,
+                width: 200,
+                decoration: BoxDecoration(
+                  color: Colors.grey.shade300,
+                  borderRadius: BorderRadius.circular(8),
+                ),
               ),
+            ),
+          ),
+
+          const SizedBox(height: 8),
+
+          // Subtitle
+          Padding(
+            padding: const EdgeInsets.symmetric(horizontal: 20),
+            child: Center(
+              child: Container(
+                height: 16,
+                width: 140,
+                decoration: BoxDecoration(
+                  color: Colors.grey.shade300,
+                  borderRadius: BorderRadius.circular(8),
+                ),
+              ),
+            ),
+          ),
+
+          const SizedBox(height: 24),
+
+          // Info card
+          Container(
+            margin: const EdgeInsets.symmetric(horizontal: 20),
+            height: 60,
+            decoration: BoxDecoration(
+              color: Colors.grey.shade300,
+              borderRadius: BorderRadius.circular(25),
             ),
           ),
 
           const SizedBox(height: 10),
 
-          // Subtitle
-          Padding(
-            padding: const EdgeInsets.symmetric(horizontal: 16),
-            child: Container(
-              height: 16,
-              width: 140,
-              decoration: BoxDecoration(
-                color: Colors.grey.shade300,
-                borderRadius: BorderRadius.circular(8),
-              ),
-            ),
-          ),
-
-          const SizedBox(height: 30),
-
-          // Genres shimmer
-          Padding(
-            padding: const EdgeInsets.symmetric(horizontal: 16),
-            child: Wrap(
-              spacing: 10,
-              children: List.generate(
-                4,
-                (i) => Container(
-                  height: 28,
-                  width: 70,
-                  decoration: BoxDecoration(
-                    color: Colors.grey.shade300,
-                    borderRadius: BorderRadius.circular(20),
-                  ),
-                ),
-              ),
-            ),
-          ),
-
-          const SizedBox(height: 25),
-
-          // Description Title
-          Padding(
-            padding: const EdgeInsets.symmetric(horizontal: 16),
-            child: Container(
-              height: 20,
-              width: 120,
+          // Stats card
+          Container(
+            margin: const EdgeInsets.symmetric(horizontal: 20, vertical: 10),
+            height: 60,
+            decoration: BoxDecoration(
               color: Colors.grey.shade300,
+              borderRadius: BorderRadius.circular(20),
             ),
           ),
 
-          const SizedBox(height: 15),
+          const SizedBox(height: 12),
 
-          // Description lines
-          Padding(
-            padding: const EdgeInsets.symmetric(horizontal: 16),
+          // Genres card
+          Container(
+            width: double.infinity,
+            margin: const EdgeInsets.symmetric(horizontal: 20, vertical: 12),
+            padding: const EdgeInsets.fromLTRB(24, 12, 24, 18),
+            decoration: BoxDecoration(
+              color: Colors.grey.shade300,
+              borderRadius: BorderRadius.circular(20),
+            ),
             child: Column(
-              children: List.generate(
-                4,
-                (i) => Padding(
-                  padding: const EdgeInsets.only(bottom: 12),
-                  child: Container(
-                    height: 14,
-                    width: double.infinity,
-                    color: Colors.grey.shade300,
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Container(
+                  height: 20,
+                  width: 60,
+                  decoration: BoxDecoration(
+                    color: Colors.grey.shade400,
+                    borderRadius: BorderRadius.circular(4),
                   ),
                 ),
-              ),
+                const SizedBox(height: 16),
+                Wrap(
+                  spacing: 6,
+                  runSpacing: 6,
+                  children: List.generate(
+                    4,
+                    (i) => Container(
+                      height: 22,
+                      width: 70,
+                      decoration: BoxDecoration(
+                        color: Colors.grey.shade400,
+                        borderRadius: BorderRadius.circular(20),
+                      ),
+                    ),
+                  ),
+                ),
+              ],
+            ),
+          ),
+
+          // Description card
+          Container(
+            width: double.infinity,
+            margin: const EdgeInsets.symmetric(horizontal: 20, vertical: 12),
+            padding: const EdgeInsets.fromLTRB(24, 16, 24, 18),
+            decoration: BoxDecoration(
+              color: Colors.grey.shade300,
+              borderRadius: BorderRadius.circular(20),
+            ),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Container(
+                  height: 20,
+                  width: 100,
+                  decoration: BoxDecoration(
+                    color: Colors.grey.shade400,
+                    borderRadius: BorderRadius.circular(4),
+                  ),
+                ),
+                const SizedBox(height: 16),
+                ...List.generate(
+                  4,
+                  (i) => Padding(
+                    padding: const EdgeInsets.only(bottom: 10),
+                    child: Container(
+                      height: 14,
+                      width: double.infinity,
+                      decoration: BoxDecoration(
+                        color: Colors.grey.shade400,
+                        borderRadius: BorderRadius.circular(2),
+                      ),
+                    ),
+                  ),
+                ),
+              ],
             ),
           ),
         ],
@@ -1295,24 +1844,18 @@ class FadeInImageWidget extends StatelessWidget {
         width: width,
         height: height,
         color: Colors.grey[200],
-        child: FadeInImage(
-          placeholder: MemoryImage(kTransparentImage),
-          image: ResizeImage(
-            NetworkImage(imageUrl),
-            width: (width * 3).toInt(), // Optimize decoding size
-          ),
+        child: CachedNetworkImage(
+          imageUrl: imageUrl,
           width: width,
           height: height,
           fit: BoxFit.cover,
+          memCacheWidth: (width * 3).toInt(), // Optimize decoding size
+          placeholder: (context, url) => Container(color: Colors.grey[200]),
+          errorWidget: (context, url, error) => Container(
+            color: Colors.grey[300],
+            child: const Icon(Icons.broken_image, color: Colors.grey),
+          ),
           fadeInDuration: const Duration(milliseconds: 250),
-          imageErrorBuilder: (context, error, stackTrace) {
-            return Container(
-              width: width,
-              height: height,
-              color: Colors.grey[300],
-              child: const Icon(Icons.broken_image, color: Colors.grey),
-            );
-          },
         ),
       ),
     );

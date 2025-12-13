@@ -150,6 +150,29 @@ class AniListService {
     }
   ''';
 
+  static const String genreQuery = r'''
+    query ($genre: String, $page: Int, $perPage: Int) {
+      Page(page: $page, perPage: $perPage) {
+        media(genre: $genre, sort: POPULARITY_DESC, type: ANIME) {
+          id
+          title { romaji english }
+          format
+          genres
+          description(asHtml: false)
+          episodes
+          averageScore
+          popularity
+          favourites
+          rankings { rank type allTime }
+          status
+          bannerImage
+          startDate { year }
+          coverImage { medium large }
+        }
+      }
+    }
+  ''';
+
   static const String mediaDetailQuery = r'''
     query ($id: Int) {
       Media(id: $id) {
@@ -164,6 +187,11 @@ class AniListService {
         favourites
         rankings { rank type allTime }
         status
+        nextAiringEpisode {
+          airingAt
+          timeUntilAiring
+          episode
+        }
         bannerImage
         startDate { year month day }
         endDate { year month day }
@@ -174,11 +202,14 @@ class AniListService {
         coverImage { medium large }
         studios(isMain: true) { nodes { name } }
         trailer { id site thumbnail }
-        characters(sort: [ROLE, RELEVANCE], perPage: 10) {
-          nodes {
-            id
-            name { full }
-            image { medium }
+        characters(sort: [ROLE, RELEVANCE], perPage: 25) {
+          edges {
+            role
+            node {
+              id
+              name { full }
+              image { medium }
+            }
           }
         }
         recommendations(sort: RATING_DESC, perPage: 25) {
@@ -203,6 +234,14 @@ class AniListService {
               coverImage { medium large }
             }
           }
+        }
+        externalLinks {
+          id
+          url
+          site
+          type
+          icon
+          color
         }
       }
     }
@@ -271,21 +310,34 @@ class AniListService {
     int pages = 2,
     Map<String, dynamic>? otherVariables,
   }) async {
-    final List<dynamic> combined = [];
+    final List<Future<List<dynamic>>> futures = [];
+
     for (var p = 1; p <= pages; p++) {
       final vars = <String, dynamic>{'page': p, 'perPage': perPage};
       if (otherVariables != null) vars.addAll(otherVariables);
-      final pageResult = await _fetch(
-        query,
-        variables: vars,
-        fetchPolicy: FetchPolicy.networkOnly,
+      futures.add(
+        _fetch(
+          query,
+          variables: vars,
+          // Use cache-first if appropriate, but networkOnly ensures fresh data.
+          // Keeping networkOnly for now as per original code, but parallelizing.
+          fetchPolicy: FetchPolicy.networkOnly,
+        ),
       );
-      if (pageResult.isEmpty) {
-        // If a page returns empty, break early
+    }
+
+    final results = await Future.wait(futures);
+
+    final combined = <dynamic>[];
+    for (final pageData in results) {
+      if (pageData.isEmpty) {
+        // If a page in the sequence is missing (failed), stop adding subsequent pages
+        // to maintain the correct order and ranking integrity.
         break;
       }
-      combined.addAll(pageResult);
+      combined.addAll(pageData);
     }
+
     return combined;
   }
 
@@ -313,6 +365,14 @@ class AniListService {
 
   static Future<List<dynamic>> getTopMovies() async =>
       _fetchMultiplePages(topMoviesQuery, perPage: 50, pages: 2);
+
+  static Future<List<dynamic>> getAnimeByGenre(String genre) async =>
+      _fetchMultiplePages(
+        genreQuery,
+        perPage: 50,
+        pages: 2,
+        otherVariables: {'genre': genre.trim()},
+      );
 
   static Future<Map<String, dynamic>?> getCharacterDetails(int id) async {
     final opts = QueryOptions(

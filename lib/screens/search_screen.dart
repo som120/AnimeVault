@@ -6,10 +6,12 @@ import 'anime_detail_screen.dart';
 import 'dart:async';
 import 'package:shimmer/shimmer.dart';
 import 'package:shared_preferences/shared_preferences.dart';
-import 'package:transparent_image/transparent_image.dart';
+
+import 'package:cached_network_image/cached_network_image.dart';
 
 class SearchScreen extends StatefulWidget {
-  const SearchScreen({super.key});
+  final String? initialGenre;
+  const SearchScreen({super.key, this.initialGenre});
 
   @override
   State<SearchScreen> createState() => _SearchScreenState();
@@ -65,7 +67,14 @@ class _SearchScreenState extends State<SearchScreen> {
 
   Future<void> _init() async {
     await _loadSearchHistory(); // wait until history loads fully
-    await _fetchAnimeByCategory("Top 100", AniListService.getTopAnime);
+    if (widget.initialGenre != null) {
+      await _fetchAnimeByCategory(
+        widget.initialGenre!,
+        () => AniListService.getAnimeByGenre(widget.initialGenre!),
+      );
+    } else {
+      await _fetchAnimeByCategory("Top 100", AniListService.getTopAnime);
+    }
   }
 
   Future<void> _loadSearchHistory() async {
@@ -378,6 +387,52 @@ class _SearchScreenState extends State<SearchScreen> {
                   scrollDirection: Axis.horizontal,
                   child: Row(
                     children: [
+                      // Show genre filter if active and not a standard filter
+                      if (selectedFilter != "Top 100" &&
+                          selectedFilter != "Popular" &&
+                          selectedFilter != "Upcoming" &&
+                          selectedFilter != "Airing" &&
+                          selectedFilter != "Movies" &&
+                          selectedFilter != "Search")
+                        Padding(
+                          padding: const EdgeInsets.only(left: 6, right: 6),
+                          child: Container(
+                            padding: const EdgeInsets.symmetric(
+                              horizontal: 14,
+                              vertical: 8,
+                            ),
+                            decoration: BoxDecoration(
+                              color: const Color(0xFF714FDC),
+                              borderRadius: BorderRadius.circular(25),
+                            ),
+                            child: Row(
+                              mainAxisSize: MainAxisSize.min,
+                              children: [
+                                Text(
+                                  selectedFilter,
+                                  style: const TextStyle(
+                                    color: Colors.white,
+                                    fontWeight: FontWeight.w600,
+                                  ),
+                                ),
+                                const SizedBox(width: 6),
+                                GestureDetector(
+                                  onTap: () {
+                                    _fetchAnimeByCategory(
+                                      "Top 100",
+                                      AniListService.getTopAnime,
+                                    );
+                                  },
+                                  child: const Icon(
+                                    Icons.close,
+                                    color: Colors.white,
+                                    size: 18,
+                                  ),
+                                ),
+                              ],
+                            ),
+                          ),
+                        ),
                       buildFilterButton("Top 100", AniListService.getTopAnime),
                       buildFilterButton(
                         "Popular",
@@ -636,7 +691,7 @@ class AnimeListCard extends StatelessWidget {
                                 : rank == 3
                                 ? Colors.brown[200]!
                                 : Colors.indigo.shade100,
-                            period: const Duration(milliseconds: 1500),
+                            period: const Duration(milliseconds: 1200),
                             child: Container(
                               decoration: BoxDecoration(
                                 color: Colors.white,
@@ -703,6 +758,7 @@ class AnimeListShimmer extends StatelessWidget {
         return Shimmer.fromColors(
           baseColor: Colors.grey.shade300,
           highlightColor: Colors.grey.shade100,
+          period: const Duration(milliseconds: 1200),
           child: Container(
             margin: const EdgeInsets.symmetric(vertical: 6),
             padding: const EdgeInsets.all(10),
@@ -792,24 +848,18 @@ class FadeInImageWidget extends StatelessWidget {
         width: width,
         height: height,
         color: Colors.grey[200],
-        child: FadeInImage(
-          placeholder: MemoryImage(kTransparentImage),
-          image: ResizeImage(
-            NetworkImage(imageUrl),
-            width: (width * 3).toInt(), // Optimize decoding size
-          ),
+        child: CachedNetworkImage(
+          imageUrl: imageUrl,
           width: width,
           height: height,
           fit: BoxFit.cover,
+          memCacheWidth: (width * 3).toInt(), // Optimize memory usage
+          placeholder: (context, url) => Container(color: Colors.grey[200]),
+          errorWidget: (context, url, error) => Container(
+            color: Colors.grey[300],
+            child: const Icon(Icons.broken_image, color: Colors.grey),
+          ),
           fadeInDuration: const Duration(milliseconds: 250),
-          imageErrorBuilder: (context, error, stackTrace) {
-            return Container(
-              width: width,
-              height: height,
-              color: Colors.grey[300],
-              child: const Icon(Icons.broken_image, color: Colors.grey),
-            );
-          },
         ),
       ),
     );
