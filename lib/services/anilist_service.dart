@@ -417,4 +417,61 @@ class AniListService {
       return null;
     }
   }
+
+  static const String airingScheduleQuery = r'''
+    query ($start: Int, $end: Int, $page: Int, $perPage: Int) {
+      Page(page: $page, perPage: $perPage) {
+        airingSchedules(airingAt_greater: $start, airingAt_lesser: $end, sort: TIME) {
+          id
+          episode
+          airingAt
+          media {
+            id
+            title { romaji english }
+            coverImage { large medium }
+            format
+            genres
+            status
+            averageScore
+            episodes
+            nextAiringEpisode {
+              airingAt
+              episode
+            }
+          }
+        }
+      }
+    }
+  ''';
+
+  static Future<List<dynamic>> getAiringSchedule({
+    required int start,
+    required int end,
+    int page = 1,
+    int perPage = 50,
+  }) async {
+    final opts = QueryOptions(
+      document: gql(airingScheduleQuery),
+      variables: {'start': start, 'end': end, 'page': page, 'perPage': perPage},
+      fetchPolicy: FetchPolicy.networkOnly,
+    );
+
+    try {
+      final result = await client().query(opts);
+
+      if (result.hasException) {
+        debugPrint('AniList API Error: ${result.exception}');
+        return [];
+      }
+
+      final pageData = result.data?['Page'];
+      if (pageData == null) return [];
+      final schedules = pageData['airingSchedules'];
+      if (schedules == null) return [];
+      return List<dynamic>.from(schedules);
+    } catch (e, st) {
+      debugPrint('AniList fetch failed: $e\n$st');
+      return [];
+    }
+  }
 }
