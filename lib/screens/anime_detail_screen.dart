@@ -37,7 +37,7 @@ class _AnimeDetailScreenState extends State<AnimeDetailScreen>
 
     // Initialize banner animation
     _bannerAnimationController = AnimationController(
-      duration: const Duration(seconds: 20),
+      duration: const Duration(seconds: 7),
       vsync: this,
     );
 
@@ -52,7 +52,7 @@ class _AnimeDetailScreenState extends State<AnimeDetailScreen>
 
     // Initialize pulsing dot animation
     _dotAnimationController = AnimationController(
-      duration: const Duration(milliseconds: 1500),
+      duration: const Duration(milliseconds: 3500),
       vsync: this,
     )..repeat();
 
@@ -235,7 +235,7 @@ class _AnimeDetailScreenState extends State<AnimeDetailScreen>
                         if (widget.anime['status'] == 'RELEASING')
                           Positioned(
                             bottom: 4,
-                            right: 4,
+                            left: 4,
                             child: RepaintBoundary(
                               child: AnimatedBuilder(
                                 animation: _dotAnimationController,
@@ -247,16 +247,16 @@ class _AnimeDetailScreenState extends State<AnimeDetailScreen>
                                       : value + 0.5;
 
                                   return SizedBox(
-                                    width: 24,
-                                    height: 24,
+                                    width: 32,
+                                    height: 32,
                                     child: Stack(
                                       alignment: Alignment.center,
                                       children: [
                                         // First Ripple Ring
                                         if (value < 0.95)
                                           Container(
-                                            width: 8 + (value * 16),
-                                            height: 8 + (value * 16),
+                                            width: 12 + (value * 20),
+                                            height: 12 + (value * 20),
                                             decoration: BoxDecoration(
                                               shape: BoxShape.circle,
                                               border: Border.all(
@@ -273,8 +273,8 @@ class _AnimeDetailScreenState extends State<AnimeDetailScreen>
                                         // Second Ripple Ring (Staggered)
                                         if (value2 < 0.95)
                                           Container(
-                                            width: 8 + (value2 * 16),
-                                            height: 8 + (value2 * 16),
+                                            width: 12 + (value2 * 20),
+                                            height: 12 + (value2 * 20),
                                             decoration: BoxDecoration(
                                               shape: BoxShape.circle,
                                               border: Border.all(
@@ -295,8 +295,8 @@ class _AnimeDetailScreenState extends State<AnimeDetailScreen>
                                   );
                                 },
                                 child: Container(
-                                  width: 8,
-                                  height: 8,
+                                  width: 12,
+                                  height: 12,
                                   decoration: BoxDecoration(
                                     color: const Color(0xFF69F0AE),
                                     shape: BoxShape.circle,
@@ -530,92 +530,71 @@ class _AnimeDetailScreenState extends State<AnimeDetailScreen>
   }
 
   Widget buildGenres(Map<String, dynamic> anime) {
-    final genres = anime['genres'] ?? [];
+    final genres = (anime['genres'] as List?) ?? [];
     if (genres.isEmpty) return const SizedBox.shrink();
 
     return RepaintBoundary(
       child: Container(
         width: double.infinity,
-        margin: const EdgeInsets.symmetric(horizontal: 20, vertical: 12),
-        // Top: 24 to match Description title. Bottom: 16 for a balanced but compact look.
-        padding: const EdgeInsets.fromLTRB(24, 12, 24, 18),
-        decoration: BoxDecoration(
-          color: Colors.white,
-          borderRadius: BorderRadius.circular(20),
-          boxShadow: [
-            BoxShadow(
-              color: Colors.black.withOpacity(0.15),
-              blurRadius: 20,
-              offset: const Offset(0, 4),
-            ),
-          ],
-        ),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            const Text(
-              "Genres",
-              style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
-            ),
-            const SizedBox(
-              height: 16,
-            ), // Restored to match Description section spacing
-            Wrap(
-              alignment: WrapAlignment.start,
-              spacing: 6,
-              runSpacing: 6,
-              children: genres.map<Widget>((genre) {
-                return GestureDetector(
-                  onTap: () {
-                    // AniList API genres are case-sensitive and returned in Title Case
-                    // (e.g., "Action", "Comedy", "Sci-Fi")
-                    Navigator.push(
-                      context,
-                      PageRouteBuilder(
-                        pageBuilder: (context, animation, secondaryAnimation) =>
-                            SearchScreen(initialGenre: genre.toString().trim()),
-                        transitionsBuilder:
-                            (context, animation, secondaryAnimation, child) {
-                              const begin = Offset(0.0, 1.0);
-                              const end = Offset.zero;
-                              const curve = Curves.easeOutCubic;
+        alignment: Alignment.center,
+        margin: const EdgeInsets.symmetric(vertical: 12),
+        child: SingleChildScrollView(
+          scrollDirection: Axis.horizontal,
+          padding: const EdgeInsets.symmetric(horizontal: 20),
+          child: Row(
+            mainAxisSize: MainAxisSize.min,
+            children: genres.map<Widget>((genre) {
+              return GestureDetector(
+                onTap: () {
+                  // AniList API genres are case-sensitive and returned in Title Case
+                  // (e.g., "Action", "Comedy", "Sci-Fi")
+                  Navigator.push(
+                    context,
+                    PageRouteBuilder(
+                      pageBuilder: (context, animation, secondaryAnimation) =>
+                          SearchScreen(initialGenre: genre.toString().trim()),
+                      transitionsBuilder:
+                          (context, animation, secondaryAnimation, child) {
+                            const begin = Offset(0.0, 1.0);
+                            const end = Offset.zero;
+                            const curve = Curves.easeOutCubic;
 
-                              var tween = Tween(
-                                begin: begin,
-                                end: end,
-                              ).chain(CurveTween(curve: curve));
+                            var tween = Tween(
+                              begin: begin,
+                              end: end,
+                            ).chain(CurveTween(curve: curve));
 
-                              return SlideTransition(
-                                position: animation.drive(tween),
-                                child: child,
-                              );
-                            },
-                      ),
-                    );
-                  },
-                  child: Container(
-                    padding: const EdgeInsets.symmetric(
-                      horizontal: 10,
-                      vertical: 5,
+                            return SlideTransition(
+                              position: animation.drive(tween),
+                              child: child,
+                            );
+                          },
                     ),
-                    decoration: BoxDecoration(
-                      color: const Color(0xFF714FDC).withOpacity(0.10),
-                      borderRadius: BorderRadius.circular(20),
-                      border: Border.all(color: const Color(0xFFE8E8E8)),
-                    ),
-                    child: Text(
-                      genre,
-                      style: const TextStyle(
-                        fontSize: 12,
-                        fontWeight: FontWeight.w600,
-                        color: Color(0xFF714FDC),
-                      ),
+                  );
+                },
+                child: Container(
+                  margin: const EdgeInsets.only(right: 8),
+                  padding: const EdgeInsets.symmetric(
+                    horizontal: 14,
+                    vertical: 6,
+                  ),
+                  decoration: BoxDecoration(
+                    color: AppTheme.primary.withOpacity(0.1),
+                    borderRadius: BorderRadius.circular(20),
+                    border: Border.all(color: AppTheme.primary),
+                  ),
+                  child: Text(
+                    genre,
+                    style: TextStyle(
+                      fontSize: 13,
+                      fontWeight: FontWeight.w500,
+                      color: AppTheme.primary,
                     ),
                   ),
-                );
-              }).toList(),
-            ),
-          ],
+                ),
+              );
+            }).toList(),
+          ),
         ),
       ),
     );
@@ -1093,7 +1072,7 @@ class _AnimeDetailScreenState extends State<AnimeDetailScreen>
       padding: const EdgeInsets.fromLTRB(0, 20, 0, 5),
 
       child: SizedBox(
-        height: 175, // Reduced height to fit content tightly
+        height: 210, // Increased height to fix overflow
         child: ListView.separated(
           padding: const EdgeInsets.symmetric(horizontal: 20),
           scrollDirection: Axis.horizontal,
@@ -1104,7 +1083,10 @@ class _AnimeDetailScreenState extends State<AnimeDetailScreen>
           itemBuilder: (context, index) {
             final edge = characters[index];
             final node = edge['node'];
-            final role = edge['role']?.toString().toUpperCase() ?? "UNKNOWN";
+            String role = edge['role']?.toString() ?? "Unknown";
+            role = role.isNotEmpty
+                ? role[0].toUpperCase() + role.substring(1).toLowerCase()
+                : "Unknown";
 
             if (node == null) return const SizedBox.shrink();
 
@@ -1229,8 +1211,16 @@ class _AnimeDetailScreenState extends State<AnimeDetailScreen>
           itemBuilder: (context, index) {
             final edge = validRelations[index];
             final node = edge['node'];
-            final relationType =
-                edge['relationType']?.replaceAll('_', ' ') ?? 'RELATED';
+            String relationType =
+                edge['relationType']?.replaceAll('_', ' ') ?? 'Related';
+            // Convert to Title Case
+            relationType = relationType
+                .split(' ')
+                .map((str) {
+                  if (str.isEmpty) return str;
+                  return str[0].toUpperCase() + str.substring(1).toLowerCase();
+                })
+                .join(' ');
 
             final title =
                 node['title']?['romaji'] ??
@@ -1324,13 +1314,13 @@ class _AnimeDetailScreenState extends State<AnimeDetailScreen>
             ),
             const SizedBox(height: 15),
             SizedBox(
-              height: 190, // Reduced height
+              height: 215, // Increased height
               child: ListView.separated(
                 scrollDirection: Axis.horizontal,
                 itemCount: validRecs.length,
                 addAutomaticKeepAlives: false,
                 addRepaintBoundaries: true,
-                separatorBuilder: (context, index) => const SizedBox(width: 14),
+                separatorBuilder: (context, index) => const SizedBox(width: 20),
                 itemBuilder: (context, index) {
                   final rec = validRecs[index];
                   final media = rec['mediaRecommendation'];
@@ -1352,19 +1342,19 @@ class _AnimeDetailScreenState extends State<AnimeDetailScreen>
                       );
                     },
                     child: SizedBox(
-                      width: 110, // Reduced width
+                      width: 120, // Increased width
                       child: Column(
                         crossAxisAlignment: CrossAxisAlignment.start,
                         children: [
                           image != null
                               ? FadeInImageWidget(
                                   imageUrl: image,
-                                  width: 110,
-                                  height: 155,
+                                  width: 120,
+                                  height: 170,
                                 )
                               : Container(
-                                  width: 110,
-                                  height: 155,
+                                  width: 120,
+                                  height: 170,
                                   decoration: BoxDecoration(
                                     color: Colors.grey[300],
                                     borderRadius: BorderRadius.circular(12),
@@ -1381,7 +1371,7 @@ class _AnimeDetailScreenState extends State<AnimeDetailScreen>
                               fontSize: 12,
                               fontWeight: FontWeight.w600,
                             ),
-                            maxLines: 1,
+                            maxLines: 2, // Allow 2 lines for better readability
                             overflow: TextOverflow.ellipsis,
                           ),
                         ],
@@ -1429,29 +1419,38 @@ class _AnimeDetailScreenState extends State<AnimeDetailScreen>
             ),
             // More vertical padding between title and text
             const SizedBox(height: 16),
-            AnimatedCrossFade(
-              firstChild: Text(
-                description,
-                maxLines: 5,
-                overflow: TextOverflow.ellipsis,
-                style: TextStyle(
-                  fontSize: 15,
-                  color: Colors.grey.shade700,
-                  height: 1.5, // Softer line-height
+            GestureDetector(
+              onTap: () {
+                if (isLong) {
+                  setState(() {
+                    isDescriptionExpanded = !isDescriptionExpanded;
+                  });
+                }
+              },
+              child: AnimatedCrossFade(
+                firstChild: Text(
+                  description,
+                  maxLines: 5,
+                  overflow: TextOverflow.ellipsis,
+                  style: TextStyle(
+                    fontSize: 15,
+                    color: Colors.grey.shade700,
+                    height: 1.5, // Softer line-height
+                  ),
                 ),
-              ),
-              secondChild: Text(
-                description,
-                style: TextStyle(
-                  fontSize: 15,
-                  color: Colors.grey.shade700,
-                  height: 1.5, // Softer line-height
+                secondChild: Text(
+                  description,
+                  style: TextStyle(
+                    fontSize: 15,
+                    color: Colors.grey.shade700,
+                    height: 1.5, // Softer line-height
+                  ),
                 ),
+                crossFadeState: isDescriptionExpanded
+                    ? CrossFadeState.showSecond
+                    : CrossFadeState.showFirst,
+                duration: const Duration(milliseconds: 300),
               ),
-              crossFadeState: isDescriptionExpanded
-                  ? CrossFadeState.showSecond
-                  : CrossFadeState.showFirst,
-              duration: const Duration(milliseconds: 300),
             ),
             if (isLong)
               GestureDetector(
