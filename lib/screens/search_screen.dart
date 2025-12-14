@@ -393,6 +393,7 @@ class _SearchScreenState extends State<SearchScreen> {
                           selectedFilter != "Upcoming" &&
                           selectedFilter != "Airing" &&
                           selectedFilter != "Movies" &&
+                          selectedFilter != "Calendar" &&
                           selectedFilter != "Search")
                         Padding(
                           padding: const EdgeInsets.only(left: 6, right: 6),
@@ -434,6 +435,41 @@ class _SearchScreenState extends State<SearchScreen> {
                           ),
                         ),
                       buildFilterButton("Top 100", AniListService.getTopAnime),
+                      // Calendar Button
+                      Padding(
+                        padding: const EdgeInsets.symmetric(horizontal: 6),
+                        child: GestureDetector(
+                          onTap: () {
+                            FocusManager.instance.primaryFocus?.unfocus();
+                            _searchFocus.unfocus();
+                            isFocused = false;
+                            setState(() {
+                              selectedFilter = "Calendar";
+                            });
+                          },
+                          child: Container(
+                            padding: const EdgeInsets.symmetric(
+                              horizontal: 14,
+                              vertical: 8,
+                            ),
+                            decoration: BoxDecoration(
+                              color: selectedFilter == "Calendar"
+                                  ? const Color(0xFF714FDC)
+                                  : Colors.grey[300],
+                              borderRadius: BorderRadius.circular(25),
+                            ),
+                            child: Text(
+                              "Calendar",
+                              style: TextStyle(
+                                color: selectedFilter == "Calendar"
+                                    ? Colors.white
+                                    : Colors.black87,
+                                fontWeight: FontWeight.w600,
+                              ),
+                            ),
+                          ),
+                        ),
+                      ),
                       buildFilterButton(
                         "Popular",
                         AniListService.getPopularAnime,
@@ -458,6 +494,8 @@ class _SearchScreenState extends State<SearchScreen> {
               Expanded(
                 child: isFocused && _controller.text.isEmpty
                     ? buildSearchHistory()
+                    : selectedFilter == "Calendar"
+                    ? const _CalendarView()
                     : isLoading
                     ? const AnimeListShimmer()
                     : ListView.builder(
@@ -861,6 +899,281 @@ class FadeInImageWidget extends StatelessWidget {
           ),
           fadeInDuration: const Duration(milliseconds: 250),
         ),
+      ),
+    );
+  }
+}
+
+class _CalendarView extends StatefulWidget {
+  const _CalendarView();
+
+  @override
+  State<_CalendarView> createState() => _CalendarViewState();
+}
+
+class _CalendarViewState extends State<_CalendarView> {
+  int _selectedDayIndex = 0;
+  late final List<DateTime> _days;
+  final Map<int, List<dynamic>> _scheduleCache = {}; // Cache for each day
+
+  @override
+  void initState() {
+    super.initState();
+    final now = DateTime.now();
+    _days = List.generate(7, (index) => now.add(Duration(days: index)));
+  }
+
+  String _getDayName(int weekday) {
+    const days = [
+      "Monday",
+      "Tuesday",
+      "Wednesday",
+      "Thursday",
+      "Friday",
+      "Saturday",
+      "Sunday",
+    ];
+    return days[weekday - 1];
+  }
+
+  String _formatTime(int timestamp) {
+    final date = DateTime.fromMillisecondsSinceEpoch(timestamp * 1000);
+    final hour = date.hour.toString().padLeft(2, '0');
+    final minute = date.minute.toString().padLeft(2, '0');
+    return "$hour:$minute";
+  }
+
+  Future<List<dynamic>> _fetchSchedule() async {
+    // Check if data is already cached
+    if (_scheduleCache.containsKey(_selectedDayIndex)) {
+      return _scheduleCache[_selectedDayIndex]!;
+    }
+
+    // Fetch new data
+    final date = _days[_selectedDayIndex];
+    final startOfDay = DateTime(date.year, date.month, date.day);
+    final endOfDay = startOfDay
+        .add(const Duration(days: 1))
+        .subtract(const Duration(seconds: 1));
+
+    final start = startOfDay.millisecondsSinceEpoch ~/ 1000;
+    final end = endOfDay.millisecondsSinceEpoch ~/ 1000;
+
+    final schedules = await AniListService.getAiringSchedule(
+      start: start,
+      end: end,
+      perPage: 50,
+    );
+
+    // Cache the result
+    _scheduleCache[_selectedDayIndex] = schedules;
+
+    return schedules;
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return Column(
+      children: [
+        // Day Tabs
+        Container(
+          height: 40,
+          margin: const EdgeInsets.only(bottom: 10),
+          child: ListView.separated(
+            scrollDirection: Axis.horizontal,
+            itemCount: _days.length,
+            separatorBuilder: (context, index) => const SizedBox(width: 20),
+            itemBuilder: (context, index) {
+              final date = _days[index];
+              final isSelected = index == _selectedDayIndex;
+
+              return GestureDetector(
+                onTap: () => setState(() => _selectedDayIndex = index),
+                child: Column(
+                  mainAxisAlignment: MainAxisAlignment.center,
+                  children: [
+                    Text(
+                      _getDayName(date.weekday),
+                      style: TextStyle(
+                        color: isSelected ? Colors.black87 : Colors.grey,
+                        fontWeight: isSelected
+                            ? FontWeight.bold
+                            : FontWeight.w500,
+                        fontSize: 16,
+                      ),
+                    ),
+                    const SizedBox(height: 4),
+                    AnimatedContainer(
+                      duration: const Duration(milliseconds: 300),
+                      curve: Curves.easeInOut,
+                      height: 3,
+                      width: isSelected ? 24 : 0,
+                      decoration: BoxDecoration(
+                        color: const Color(0xFF714FDC),
+                        borderRadius: BorderRadius.circular(2),
+                      ),
+                    ),
+                  ],
+                ),
+              );
+            },
+          ),
+        ),
+
+        // Grid Content
+        Expanded(
+          child: FutureBuilder<List<dynamic>>(
+            key: ValueKey(_selectedDayIndex),
+            future: _fetchSchedule(),
+            builder: (context, snapshot) {
+              final isLoading =
+                  snapshot.connectionState == ConnectionState.waiting;
+
+              if (snapshot.hasError) {
+                return Center(child: Text("Error: ${snapshot.error}"));
+              }
+
+              final schedules = snapshot.data ?? [];
+              final itemCount = isLoading ? 12 : schedules.length;
+
+              if (!isLoading && schedules.isEmpty) {
+                return const Center(
+                  child: Text("No anime airing on this day."),
+                );
+              }
+
+              return GridView.builder(
+                padding: const EdgeInsets.only(bottom: 20),
+                gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
+                  crossAxisCount: 3,
+                  childAspectRatio: 0.55,
+                  crossAxisSpacing: 12,
+                  mainAxisSpacing: 20,
+                ),
+                itemCount: itemCount,
+                itemBuilder: (context, index) {
+                  // Staggered animation delay based on index
+                  return TweenAnimationBuilder<double>(
+                    duration: Duration(milliseconds: 400 + (index * 50)),
+                    curve: Curves.easeOutCubic,
+                    tween: Tween<double>(begin: 0.0, end: 1.0),
+                    builder: (context, value, child) {
+                      return Transform.translate(
+                        offset: Offset(0, 30 * (1 - value)),
+                        child: Opacity(opacity: value, child: child),
+                      );
+                    },
+                    child: isLoading
+                        ? _buildSkeletonCard()
+                        : _buildAnimeCard(schedules[index]),
+                  );
+                },
+              );
+            },
+          ),
+        ),
+      ],
+    );
+  }
+
+  Widget _buildSkeletonCard() {
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Expanded(
+          child: Container(
+            decoration: BoxDecoration(
+              color: Colors.grey[300],
+              borderRadius: BorderRadius.circular(12),
+            ),
+          ),
+        ),
+        const SizedBox(height: 8),
+        Container(
+          height: 14,
+          width: double.infinity,
+          decoration: BoxDecoration(
+            color: Colors.grey[300],
+            borderRadius: BorderRadius.circular(4),
+          ),
+        ),
+        const SizedBox(height: 4),
+        Container(
+          height: 12,
+          width: 80,
+          decoration: BoxDecoration(
+            color: Colors.grey[300],
+            borderRadius: BorderRadius.circular(4),
+          ),
+        ),
+      ],
+    );
+  }
+
+  Widget _buildAnimeCard(dynamic item) {
+    final media = item['media'];
+    final airingAt = item['airingAt'];
+    final episode = item['episode'];
+
+    if (media == null) return const SizedBox.shrink();
+
+    final title =
+        media['title']?['romaji'] ?? media['title']?['english'] ?? "Unknown";
+    final image =
+        media['coverImage']?['large'] ?? media['coverImage']?['medium'];
+
+    return GestureDetector(
+      onTap: () {
+        Navigator.push(
+          context,
+          MaterialPageRoute(
+            builder: (context) => AnimeDetailScreen(anime: media),
+          ),
+        );
+      },
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Expanded(
+            child: ClipRRect(
+              borderRadius: BorderRadius.circular(12),
+              child: image != null
+                  ? CachedNetworkImage(
+                      imageUrl: image,
+                      fit: BoxFit.cover,
+                      width: double.infinity,
+                      placeholder: (context, url) =>
+                          Container(color: Colors.grey[200]),
+                      errorWidget: (context, url, error) => Container(
+                        color: Colors.grey[300],
+                        child: const Icon(Icons.broken_image),
+                      ),
+                    )
+                  : Container(color: Colors.grey[200]),
+            ),
+          ),
+          const SizedBox(height: 8),
+          Text(
+            title,
+            maxLines: 2,
+            overflow: TextOverflow.ellipsis,
+            style: const TextStyle(
+              color: Colors.black87,
+              fontSize: 13,
+              fontWeight: FontWeight.w600,
+              height: 1.2,
+            ),
+          ),
+          const SizedBox(height: 4),
+          Text(
+            "Ep $episode at ${_formatTime(airingAt)}",
+            style: TextStyle(
+              color: Colors.grey[600],
+              fontSize: 11,
+              fontWeight: FontWeight.w500,
+            ),
+          ),
+        ],
       ),
     );
   }
