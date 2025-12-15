@@ -1,20 +1,22 @@
 import 'package:flutter/material.dart';
 import 'package:ainme_vault/theme/app_theme.dart';
-import 'package:ainme_vault/screens/signup_screen.dart';
 
-class LoginScreen extends StatefulWidget {
-  const LoginScreen({super.key});
+class SignupScreen extends StatefulWidget {
+  const SignupScreen({super.key});
 
   @override
-  State<LoginScreen> createState() => _LoginScreenState();
+  State<SignupScreen> createState() => _SignupScreenState();
 }
 
-class _LoginScreenState extends State<LoginScreen> {
+class _SignupScreenState extends State<SignupScreen> {
+  final _usernameController = TextEditingController();
   final _emailController = TextEditingController();
   final _passwordController = TextEditingController();
+  bool _isTermsAccepted = false;
 
   @override
   void dispose() {
+    _usernameController.dispose();
     _emailController.dispose();
     _passwordController.dispose();
     super.dispose();
@@ -35,7 +37,7 @@ class _LoginScreenState extends State<LoginScreen> {
             top: 0,
             left: 0,
             right: 0,
-            height: size.height * 0.25, // Increased height (25%)
+            height: size.height * 0.25,
             child: Container(
               decoration: const BoxDecoration(
                 image: DecorationImage(
@@ -55,15 +57,13 @@ class _LoginScreenState extends State<LoginScreen> {
             child: Center(
               child: SingleChildScrollView(
                 physics: const BouncingScrollPhysics(),
-                padding: const EdgeInsets.symmetric(
-                  horizontal: 25,
-                ), // Increased horizontal padding for smaller container
+                padding: const EdgeInsets.symmetric(horizontal: 20),
                 child: Container(
                   width: double.infinity,
-                  margin: EdgeInsets.only(top: size.height * 0.25),
+                  margin: EdgeInsets.only(top: size.height * 0.25, bottom: 0),
                   padding: const EdgeInsets.symmetric(
                     horizontal: 24,
-                    vertical: 23, // Reduced padding
+                    vertical: 28,
                   ),
                   decoration: BoxDecoration(
                     color: Colors.white,
@@ -82,92 +82,119 @@ class _LoginScreenState extends State<LoginScreen> {
                     children: [
                       // Title
                       const Text(
-                        "Welcome to",
+                        "Create an Account",
                         textAlign: TextAlign.center,
                         style: TextStyle(
-                          fontSize: 16, // Reduced size
-                          fontWeight: FontWeight.w600,
-                          color: Colors.black87,
-                        ),
-                      ),
-                      const SizedBox(height: 4),
-                      const Text(
-                        "AniVault Login Now!",
-                        textAlign: TextAlign.center,
-                        style: TextStyle(
-                          fontSize: 22, // Reduced size
+                          fontSize: 22,
                           fontWeight: FontWeight.bold,
                           color: Colors.black87,
                         ),
                       ),
-                      const SizedBox(height: 24), // Reduced spacing
+                      const SizedBox(height: 16),
+
+                      // Username Field
+                      _buildLabel("Username"),
+                      const SizedBox(height: 4),
+                      _buildTextField(
+                        controller: _usernameController,
+                        hintText: "@Jean.McGlynn",
+                      ),
+
+                      const SizedBox(height: 12),
+
                       // Email Field
                       _buildLabel("Email"),
-                      const SizedBox(height: 6),
+                      const SizedBox(height: 4),
                       _buildTextField(
                         controller: _emailController,
                         hintText: "Example@gmail.com",
                         keyboardType: TextInputType.emailAddress,
                       ),
 
-                      const SizedBox(height: 16), // Reduced spacing
+                      const SizedBox(height: 12),
+
                       // Password Field
                       _buildLabel("Password"),
-                      const SizedBox(height: 6),
+                      const SizedBox(height: 4),
                       _buildTextField(
                         controller: _passwordController,
                         hintText: "........",
                         obscureText: true,
                       ),
 
-                      // Forgot Password
-                      Align(
-                        alignment: Alignment.centerRight,
-                        child: TextButton(
-                          onPressed: () {},
-                          style: TextButton.styleFrom(
-                            padding: const EdgeInsets.fromLTRB(0, 4, 0, 4),
-                            minimumSize: Size.zero,
-                            tapTargetSize: MaterialTapTargetSize.shrinkWrap,
-                          ),
-                          child: Text(
-                            "Forgot Password?",
-                            style: TextStyle(
-                              color: AppTheme.primary.withOpacity(0.9),
-                              fontWeight: FontWeight.w600,
-                              fontSize: 13, // Reduced size
+                      const SizedBox(height: 12),
+
+                      // Terms and Conditions checkbox
+                      Row(
+                        children: [
+                          SizedBox(
+                            height: 24,
+                            width: 24,
+                            child: Checkbox(
+                              value: _isTermsAccepted,
+                              onChanged: (value) {
+                                setState(() {
+                                  _isTermsAccepted = value ?? false;
+                                });
+                              },
+                              activeColor: AppTheme.primary,
+                              shape: RoundedRectangleBorder(
+                                borderRadius: BorderRadius.circular(4),
+                              ),
+                              side: const BorderSide(color: Colors.grey),
                             ),
                           ),
-                        ),
+                          const SizedBox(width: 8),
+                          Expanded(
+                            child: RichText(
+                              text: TextSpan(
+                                text: "I agree to the ",
+                                style: const TextStyle(
+                                  color: Colors.black87,
+                                  fontSize: 13,
+                                  fontWeight: FontWeight.w500,
+                                ),
+                                children: [
+                                  TextSpan(
+                                    text: "Terms & conditions",
+                                    style: TextStyle(
+                                      color: AppTheme.primary.withOpacity(0.9),
+                                      fontWeight: FontWeight.w600,
+                                    ),
+                                  ),
+                                ],
+                              ),
+                            ),
+                          ),
+                        ],
                       ),
 
-                      const SizedBox(height: 20), // Reduced spacing
-                      // Login Button
+                      const SizedBox(height: 16),
+
+                      // Signup Button
                       ElevatedButton(
                         onPressed: () {
-                          // TODO: Implement login logic
+                          // TODO: Implement signup logic
                         },
                         style: ElevatedButton.styleFrom(
                           backgroundColor: AppTheme.primary,
                           foregroundColor: Colors.white,
-                          padding: const EdgeInsets.symmetric(
-                            vertical: 14,
-                          ), // Reduced padding
+                          padding: const EdgeInsets.symmetric(vertical: 14),
                           elevation: 0,
                           shape: RoundedRectangleBorder(
                             borderRadius: BorderRadius.circular(50),
                           ),
                         ),
                         child: const Text(
-                          "Login",
+                          "Sign up",
                           style: TextStyle(
-                            fontSize: 16, // Reduced size
+                            fontSize: 16,
                             fontWeight: FontWeight.bold,
                           ),
                         ),
                       ),
 
-                      const SizedBox(height: 24),
+                      const SizedBox(height: 16),
 
                       // "Or Sign in with"
                       const Text(
@@ -175,12 +202,13 @@ class _LoginScreenState extends State<LoginScreen> {
                         textAlign: TextAlign.center,
                         style: TextStyle(
                           color: Colors.black54,
-                          fontSize: 13, // Reduced size
+                          fontSize: 13,
                           fontWeight: FontWeight.w500,
                         ),
                       ),
 
-                      const SizedBox(height: 20), // Reduced spacing
+                      const SizedBox(height: 16),
+
                       // Social Buttons
                       Row(
                         mainAxisAlignment: MainAxisAlignment.center,
@@ -200,38 +228,6 @@ class _LoginScreenState extends State<LoginScreen> {
                           ),
                         ],
                       ),
-                      const SizedBox(height: 24),
-                      Row(
-                        mainAxisAlignment: MainAxisAlignment.center,
-                        children: [
-                          const Text(
-                            "Don't have a Account ",
-                            style: TextStyle(
-                              color: Colors.black87,
-                              fontSize: 14,
-                              fontWeight: FontWeight.w500,
-                            ),
-                          ),
-                          GestureDetector(
-                            onTap: () {
-                              Navigator.push(
-                                context,
-                                MaterialPageRoute(
-                                  builder: (context) => const SignupScreen(),
-                                ),
-                              );
-                            },
-                            child: const Text(
-                              "Signup",
-                              style: TextStyle(
-                                color: AppTheme.primary,
-                                fontSize: 14,
-                                fontWeight: FontWeight.bold,
-                              ),
-                            ),
-                          ),
-                        ],
-                      ),
                     ],
                   ),
                 ),
@@ -247,7 +243,7 @@ class _LoginScreenState extends State<LoginScreen> {
     return Text(
       text,
       style: const TextStyle(
-        fontSize: 14, // Reduced size
+        fontSize: 14,
         fontWeight: FontWeight.w600,
         color: Colors.black87,
       ),
@@ -269,20 +265,14 @@ class _LoginScreenState extends State<LoginScreen> {
         controller: controller,
         obscureText: obscureText,
         keyboardType: keyboardType,
-        style: const TextStyle(
-          fontSize: 14,
-          color: Colors.black87,
-        ), // Reduced size
+        style: const TextStyle(fontSize: 14, color: Colors.black87),
         decoration: InputDecoration(
           hintText: hintText,
-          hintStyle: TextStyle(
-            color: Colors.grey.shade400,
-            fontSize: 13,
-          ), // Reduced size
+          hintStyle: TextStyle(color: Colors.grey.shade400, fontSize: 13),
           border: InputBorder.none,
           contentPadding: const EdgeInsets.symmetric(
             horizontal: 20,
-            vertical: 16, // Reduced padding
+            vertical: 14,
           ),
           filled: false,
         ),
@@ -300,8 +290,8 @@ class _LoginScreenState extends State<LoginScreen> {
       borderRadius: BorderRadius.circular(16),
       child: Container(
         padding: const EdgeInsets.all(12),
-        width: 55, // Reduced size
-        height: 55, // Reduced size
+        width: 55,
+        height: 55,
         decoration: BoxDecoration(
           color: Colors.grey.shade100,
           borderRadius: BorderRadius.circular(16),
