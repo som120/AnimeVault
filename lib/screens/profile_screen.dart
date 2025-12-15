@@ -1,5 +1,6 @@
 import 'package:ainme_vault/utils/transitions.dart';
 import 'package:flutter/material.dart';
+import 'package:ainme_vault/screens/login_screen.dart';
 import '../main.dart'; // import to access MainScreen
 
 class ProfileScreen extends StatelessWidget {
@@ -163,10 +164,16 @@ class ProfileScreen extends StatelessWidget {
           ),
           trailing: const Icon(Icons.arrow_forward_ios, size: 18),
           onTap: () {
-            // Placeholder navigation, you can update these later
-            ScaffoldMessenger.of(
-              context,
-            ).showSnackBar(SnackBar(content: Text("$title tapped")));
+            if (title == "Logout") {
+              Navigator.push(
+                context,
+                MaterialPageRoute(builder: (context) => const LoginScreen()),
+              );
+            } else {
+              ScaffoldMessenger.of(
+                context,
+              ).showSnackBar(SnackBar(content: Text("$title tapped")));
+            }
           },
         ),
         const Padding(
