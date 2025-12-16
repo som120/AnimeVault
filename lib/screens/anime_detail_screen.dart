@@ -5,10 +5,10 @@ import 'package:ainme_vault/theme/app_theme.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 
-import 'package:shimmer/shimmer.dart';
 import 'package:url_launcher/url_launcher.dart';
 import 'package:cached_network_image/cached_network_image.dart';
 import 'package:ainme_vault/screens/search_screen.dart';
+import 'package:ainme_vault/utils/light_skeleton.dart';
 
 class AnimeDetailScreen extends StatefulWidget {
   final Map<String, dynamic> anime;
@@ -165,11 +165,14 @@ class _AnimeDetailScreenState extends State<AnimeDetailScreen>
                         CachedNetworkImage(
                           imageUrl: banner,
                           fit: BoxFit.cover,
-                          memCacheWidth: 800,
-                          placeholder: (context, url) =>
-                              Container(color: Colors.grey[900]),
-                          errorWidget: (context, url, error) =>
-                              Container(color: Colors.grey[900]),
+                          placeholder: (context, url) => LightSkeleton(
+                            width: double.infinity,
+                            height: 260,
+                            borderRadius: const BorderRadius.only(
+                              bottomLeft: Radius.circular(30),
+                              bottomRight: Radius.circular(30),
+                            ),
+                          ),
                         ),
                         Container(
                           decoration: BoxDecoration(
@@ -223,8 +226,11 @@ class _AnimeDetailScreenState extends State<AnimeDetailScreen>
                             fit: BoxFit.cover,
                             memCacheWidth: 420,
                             memCacheHeight: 600,
-                            placeholder: (context, url) =>
-                                Container(color: Colors.grey[300]),
+                            placeholder: (context, url) => LightSkeleton(
+                              width: 210,
+                              height: 300,
+                              borderRadius: BorderRadius.circular(16),
+                            ),
                             errorWidget: (context, url, error) => Container(
                               color: Colors.grey[300],
                               child: const Icon(Icons.broken_image),
@@ -852,6 +858,10 @@ class _AnimeDetailScreenState extends State<AnimeDetailScreen>
     final studioName = (studios != null && studios.isNotEmpty)
         ? studios.first['name']
         : "Unknown";
+    final screenWidth = MediaQuery.of(context).size.width;
+    final double videoWidth = screenWidth > 420
+        ? 360 // cap width on large phones / XL
+        : screenWidth - 80; // normal phones
 
     // Date Formatting Helper
     String formatDate(Map<String, dynamic>? date) {
@@ -946,20 +956,31 @@ class _AnimeDetailScreenState extends State<AnimeDetailScreen>
           // Trailer Section
           if (trailer != null && trailer['site'] == 'youtube') ...[
             const SizedBox(height: 20),
-            Text(
-              "Trailer",
-              style: TextStyle(
-                fontSize: 14,
-                color: Colors.grey.shade600,
-                fontWeight: FontWeight.w500,
-              ),
+            Row(
+              children: [
+                Icon(
+                  Icons.play_circle_fill_rounded,
+                  size: 20,
+                  color: AppTheme.primary.withOpacity(0.75),
+                ),
+                const SizedBox(width: 8),
+                Text(
+                  "Trailer",
+                  style: TextStyle(
+                    fontSize: 14,
+                    color: Colors.grey.shade600,
+                    fontWeight: FontWeight.w500,
+                  ),
+                ),
+              ],
             ),
+
             const SizedBox(height: 10),
 
             // Trailer Banner
             Center(
               child: SizedBox(
-                width: 260,
+                width: videoWidth,
                 child: GestureDetector(
                   onTap: () async {
                     final url = Uri.parse(
@@ -976,42 +997,44 @@ class _AnimeDetailScreenState extends State<AnimeDetailScreen>
                       debugPrint("Error launching URL: $e");
                     }
                   },
-                  child: ClipRRect(
-                    borderRadius: BorderRadius.circular(12),
-                    child: Stack(
-                      alignment: Alignment.center,
-                      children: [
-                        Image.network(
-                          'https://img.youtube.com/vi/${trailer['id']}/hqdefault.jpg',
-                          width: double.infinity,
-                          height: 135,
-                          fit: BoxFit.cover,
-                          errorBuilder: (context, error, stackTrace) =>
-                              Container(
-                                height: 135,
-                                color: Colors.grey[300],
-                                child: const Center(
-                                  child: Icon(
-                                    Icons.broken_image,
-                                    color: Colors.grey,
-                                  ),
-                                ),
-                              ),
-                        ),
-                        // Play Button Overlay
-                        Container(
-                          padding: const EdgeInsets.all(12),
-                          decoration: BoxDecoration(
-                            color: Colors.black.withOpacity(0.6),
-                            shape: BoxShape.circle,
+                  child: AspectRatio(
+                    aspectRatio: 16 / 9,
+                    child: ClipRRect(
+                      borderRadius: BorderRadius.circular(12),
+                      child: Stack(
+                        alignment: Alignment.center,
+                        children: [
+                          CachedNetworkImage(
+                            imageUrl:
+                                'https://img.youtube.com/vi/${trailer['id']}/hqdefault.jpg',
+                            width: double.infinity,
+                            height: double.infinity,
+                            fit: BoxFit.cover,
+                            placeholder: (context, url) => LightSkeleton(
+                              width: double.infinity,
+                              height: double.infinity,
+                              borderRadius: BorderRadius.circular(12),
+                            ),
+                            errorWidget: (context, url, error) => Container(
+                              color: Colors.grey[300],
+                              child: const Icon(Icons.broken_image),
+                            ),
+                            fadeInDuration: const Duration(milliseconds: 150),
                           ),
-                          child: const Icon(
-                            Icons.play_arrow_rounded,
-                            color: Colors.white,
-                            size: 32,
+                          Container(
+                            padding: const EdgeInsets.all(12),
+                            decoration: BoxDecoration(
+                              color: Colors.black.withOpacity(0.6),
+                              shape: BoxShape.circle,
+                            ),
+                            child: const Icon(
+                              Icons.play_arrow_rounded,
+                              color: Colors.white,
+                              size: 32,
+                            ),
                           ),
-                        ),
-                      ],
+                        ],
+                      ),
                     ),
                   ),
                 ),
@@ -1072,7 +1095,7 @@ class _AnimeDetailScreenState extends State<AnimeDetailScreen>
       padding: const EdgeInsets.fromLTRB(0, 20, 0, 5),
 
       child: SizedBox(
-        height: 210, // Increased height to fix overflow
+        height: 180, // Increased height to fix overflow
         child: ListView.separated(
           padding: const EdgeInsets.symmetric(horizontal: 20),
           scrollDirection: Axis.horizontal,
@@ -1126,24 +1149,39 @@ class _AnimeDetailScreenState extends State<AnimeDetailScreen>
                 width: 130, // Increased width
                 child: Column(
                   children: [
-                    ClipRRect(
-                      borderRadius: BorderRadius.circular(
-                        60,
-                      ), // Increased radius
-                      child: image != null
-                          ? Image.network(
-                              image,
-                              width: 120, // Increased size
-                              height: 120, // Increased size
-                              fit: BoxFit.cover,
-                            )
-                          : Container(
-                              width: 120, // Increased size
-                              height: 120, // Increased size
-                              color: Colors.grey[300],
-                              child: const Icon(Icons.person),
-                            ),
+                    Container(
+                      width: 120,
+                      height: 120,
+                      decoration: BoxDecoration(
+                        shape: BoxShape.circle,
+                        boxShadow: [
+                          BoxShadow(
+                            color: Colors.black.withOpacity(0.20),
+                            blurRadius: 12,
+                            offset: const Offset(0, 6),
+                          ),
+                        ],
+                      ),
+                      child: ClipOval(
+                        child: CachedNetworkImage(
+                          imageUrl: image,
+                          width: 120,
+                          height: 120,
+                          fit: BoxFit.cover,
+                          placeholder: (context, url) => LightSkeleton(
+                            width: 120,
+                            height: 120,
+                            borderRadius: BorderRadius.circular(60),
+                          ),
+                          errorWidget: (context, url, error) => Container(
+                            color: Colors.grey[300],
+                            child: const Icon(Icons.person),
+                          ),
+                          fadeInDuration: const Duration(milliseconds: 150),
+                        ),
+                      ),
                     ),
+
                     const SizedBox(height: 8),
                     Text(
                       name,
@@ -1590,238 +1628,6 @@ class _AnimeDetailScreenState extends State<AnimeDetailScreen>
   }
 }
 
-class AnimeDetailShimmer extends StatelessWidget {
-  final Map<String, dynamic> anime;
-  final Animation<double> bannerAnimation;
-
-  const AnimeDetailShimmer({
-    super.key,
-    required this.anime,
-    required this.bannerAnimation,
-  });
-
-  @override
-  Widget build(BuildContext context) {
-    return Shimmer.fromColors(
-      baseColor: Colors.grey.shade300,
-      highlightColor: Colors.grey.shade100,
-      period: const Duration(milliseconds: 1200),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          // Banner + Poster Stack
-          Stack(
-            clipBehavior: Clip.none,
-            children: [
-              // Animated Banner (loads immediately)
-              RepaintBoundary(
-                child: ClipRRect(
-                  borderRadius: const BorderRadius.only(
-                    bottomLeft: Radius.circular(30),
-                    bottomRight: Radius.circular(30),
-                  ),
-                  child: SizedBox(
-                    height: 260,
-                    width: double.infinity,
-                    child: AnimatedBuilder(
-                      animation: bannerAnimation,
-                      builder: (context, child) {
-                        return Transform.scale(
-                          scale: bannerAnimation.value,
-                          child: child,
-                        );
-                      },
-                      child: Stack(
-                        fit: StackFit.expand,
-                        children: [
-                          Image.network(
-                            anime['bannerImage'] ??
-                                anime['coverImage']?['large'],
-                            fit: BoxFit.cover,
-                            cacheWidth: 800,
-                            gaplessPlayback: true,
-                          ),
-                          Container(
-                            decoration: BoxDecoration(
-                              gradient: LinearGradient(
-                                begin: Alignment.topCenter,
-                                end: Alignment.bottomCenter,
-                                colors: [
-                                  Colors.black.withOpacity(0.3),
-                                  Colors.black.withOpacity(0.7),
-                                ],
-                                stops: const [0.0, 1.0],
-                              ),
-                            ),
-                          ),
-                        ],
-                      ),
-                    ),
-                  ),
-                ),
-              ),
-              // Poster shimmer (overlapping)
-              Positioned(
-                bottom: -170,
-                left: 0,
-                right: 0,
-                child: Center(
-                  child: Container(
-                    width: 210,
-                    height: 300,
-                    decoration: BoxDecoration(
-                      color: Colors.grey.shade300,
-                      borderRadius: BorderRadius.circular(16),
-                    ),
-                  ),
-                ),
-              ),
-            ],
-          ),
-
-          const SizedBox(height: 180),
-
-          // Title
-          Padding(
-            padding: const EdgeInsets.symmetric(horizontal: 20),
-            child: Center(
-              child: Container(
-                height: 24,
-                width: 200,
-                decoration: BoxDecoration(
-                  color: Colors.grey.shade300,
-                  borderRadius: BorderRadius.circular(8),
-                ),
-              ),
-            ),
-          ),
-
-          const SizedBox(height: 8),
-
-          // Subtitle
-          Padding(
-            padding: const EdgeInsets.symmetric(horizontal: 20),
-            child: Center(
-              child: Container(
-                height: 16,
-                width: 140,
-                decoration: BoxDecoration(
-                  color: Colors.grey.shade300,
-                  borderRadius: BorderRadius.circular(8),
-                ),
-              ),
-            ),
-          ),
-
-          const SizedBox(height: 24),
-
-          // Info card
-          Container(
-            margin: const EdgeInsets.symmetric(horizontal: 20),
-            height: 60,
-            decoration: BoxDecoration(
-              color: Colors.grey.shade300,
-              borderRadius: BorderRadius.circular(25),
-            ),
-          ),
-
-          const SizedBox(height: 10),
-
-          // Stats card
-          Container(
-            margin: const EdgeInsets.symmetric(horizontal: 20, vertical: 10),
-            height: 60,
-            decoration: BoxDecoration(
-              color: Colors.grey.shade300,
-              borderRadius: BorderRadius.circular(20),
-            ),
-          ),
-
-          const SizedBox(height: 12),
-
-          // Genres card
-          Container(
-            width: double.infinity,
-            margin: const EdgeInsets.symmetric(horizontal: 20, vertical: 12),
-            padding: const EdgeInsets.fromLTRB(24, 12, 24, 18),
-            decoration: BoxDecoration(
-              color: Colors.grey.shade300,
-              borderRadius: BorderRadius.circular(20),
-            ),
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Container(
-                  height: 20,
-                  width: 60,
-                  decoration: BoxDecoration(
-                    color: Colors.grey.shade400,
-                    borderRadius: BorderRadius.circular(4),
-                  ),
-                ),
-                const SizedBox(height: 16),
-                Wrap(
-                  spacing: 6,
-                  runSpacing: 6,
-                  children: List.generate(
-                    4,
-                    (i) => Container(
-                      height: 22,
-                      width: 70,
-                      decoration: BoxDecoration(
-                        color: Colors.grey.shade400,
-                        borderRadius: BorderRadius.circular(20),
-                      ),
-                    ),
-                  ),
-                ),
-              ],
-            ),
-          ),
-
-          // Description card
-          Container(
-            width: double.infinity,
-            margin: const EdgeInsets.symmetric(horizontal: 20, vertical: 12),
-            padding: const EdgeInsets.fromLTRB(24, 16, 24, 18),
-            decoration: BoxDecoration(
-              color: Colors.grey.shade300,
-              borderRadius: BorderRadius.circular(20),
-            ),
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Container(
-                  height: 20,
-                  width: 100,
-                  decoration: BoxDecoration(
-                    color: Colors.grey.shade400,
-                    borderRadius: BorderRadius.circular(4),
-                  ),
-                ),
-                const SizedBox(height: 16),
-                ...List.generate(
-                  4,
-                  (i) => Padding(
-                    padding: const EdgeInsets.only(bottom: 10),
-                    child: Container(
-                      height: 14,
-                      width: double.infinity,
-                      decoration: BoxDecoration(
-                        color: Colors.grey.shade400,
-                        borderRadius: BorderRadius.circular(2),
-                      ),
-                    ),
-                  ),
-                ),
-              ],
-            ),
-          ),
-        ],
-      ),
-    );
-  }
-}
 
 class FadeInImageWidget extends StatelessWidget {
   final String imageUrl;
