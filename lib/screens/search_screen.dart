@@ -22,6 +22,7 @@ class _SearchScreenState extends State<SearchScreen> {
   final FocusNode _searchFocus = FocusNode();
   List animeList = [];
   bool isLoading = false;
+  bool hasError = false;
   bool isFocused = false;
   bool _isScrolled = false;
   final ScrollController _scrollController = ScrollController();
@@ -127,12 +128,14 @@ class _SearchScreenState extends State<SearchScreen> {
     if (selectedFilter == filterName &&
         !isLoading &&
         animeList.isNotEmpty &&
-        filterName != "Search") {
+        filterName != "Search" &&
+        !hasError) {
       return;
     }
 
     setState(() {
       isLoading = true;
+      hasError = false; // Reset error state on new fetch
 
       // Only clear search bar on filter change
       if (filterName != "Search") {
@@ -148,23 +151,42 @@ class _SearchScreenState extends State<SearchScreen> {
     try {
       final data = await apiCall();
       if (!mounted) return;
+
+      // For search, an empty list is a valid result (no results).
+      // For categories (Top 100, Popular, etc), an empty list likely indicates a fetch error.
+      if (data.isEmpty && filterName != "Search") {
+        setState(() {
+          isLoading = false;
+          hasError = true;
+        });
+        return;
+      }
+
       setState(() {
         animeList = data;
         isLoading = false;
+        hasError = false;
       });
     } catch (e) {
       if (!mounted) return;
-      setState(() => isLoading = false);
+      setState(() {
+        isLoading = false;
+        hasError = true;
+      });
+      debugPrint("Search error: $e");
     }
   }
 
   // ------------------ SEARCH FUNCTION ------------------
   // Called while typing (debounce) → DOES NOT close keyboard
-  void _performSearch(String text) {
+  Future<void> _performSearch(String text) async {
     if (text.isEmpty) return;
 
-    _addToHistory(text);
-    _fetchAnimeByCategory("Search", () => AniListService.searchAnime(text));
+    await _addToHistory(text);
+    await _fetchAnimeByCategory(
+      "Search",
+      () => AniListService.searchAnime(text),
+    );
   }
 
   // Called when pressing the "search" button → closes keyboard
@@ -365,6 +387,96 @@ class _SearchScreenState extends State<SearchScreen> {
     );
   }
 
+  Widget _buildErrorWidget() {
+    return Center(
+      child: Container(
+        margin: const EdgeInsets.symmetric(horizontal: 40),
+        padding: const EdgeInsets.all(24),
+        decoration: BoxDecoration(
+          color: Colors.white,
+          borderRadius: BorderRadius.circular(30),
+          boxShadow: [
+            BoxShadow(
+              color: Colors.black.withOpacity(0.08),
+              blurRadius: 30,
+              offset: const Offset(0, 10),
+            ),
+          ],
+        ),
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Container(
+              padding: const EdgeInsets.all(16),
+              decoration: BoxDecoration(
+                color: Colors.red.withOpacity(0.1),
+                shape: BoxShape.circle,
+              ),
+              child: const Icon(
+                Icons.error_outline_rounded,
+                color: Colors.redAccent,
+                size: 40,
+              ),
+            ),
+            const SizedBox(height: 20),
+            const Text(
+              "Something went wrong",
+              style: TextStyle(
+                fontSize: 18,
+                fontWeight: FontWeight.bold,
+                color: Colors.black87,
+              ),
+            ),
+            const SizedBox(height: 8),
+            Text(
+              "We couldn't load the anime list.\nPlease check your connection.",
+              textAlign: TextAlign.center,
+              style: TextStyle(fontSize: 14, color: Colors.grey.shade600),
+            ),
+            const SizedBox(height: 24),
+            _RetryButton(
+              onPressed: () async {
+                if (selectedFilter == "Search") {
+                  await _performSearch(_controller.text);
+                } else {
+                  // Re-fetch current category
+                  // Note: We need a way to call the original apiCall.
+                  // Since we don't store the apiCall, we can just call the category fetch logic again.
+                  if (selectedFilter == "Top 100") {
+                    await _fetchAnimeByCategory(
+                      "Top 100",
+                      AniListService.getTopAnime,
+                    );
+                  } else if (selectedFilter == "Popular") {
+                    await _fetchAnimeByCategory(
+                      "Popular",
+                      AniListService.getPopularAnime,
+                    );
+                  } else if (selectedFilter == "Upcoming") {
+                    await _fetchAnimeByCategory(
+                      "Upcoming",
+                      AniListService.getUpcomingAnime,
+                    );
+                  } else if (selectedFilter == "Airing") {
+                    await _fetchAnimeByCategory(
+                      "Airing",
+                      AniListService.getAiringAnime,
+                    );
+                  } else if (selectedFilter == "Movies") {
+                    await _fetchAnimeByCategory(
+                      "Movies",
+                      AniListService.getTopMovies,
+                    );
+                  }
+                }
+              },
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
   // ------------------ BUILD ------------------
   @override
   Widget build(BuildContext context) {
@@ -498,6 +610,8 @@ class _SearchScreenState extends State<SearchScreen> {
                     ? const _CalendarView()
                     : isLoading
                     ? const AnimeListShimmer()
+                    : hasError
+                    ? _buildErrorWidget()
                     : ListView.builder(
                         controller: _scrollController,
                         physics: const BouncingScrollPhysics(),
@@ -1174,6 +1288,97 @@ class _CalendarViewState extends State<_CalendarView> {
             ),
           ),
         ],
+      ),
+    );
+  }
+}
+
+class _RetryButton extends StatefulWidget {
+  final Future<void> Function() onPressed;
+  const _RetryButton({required this.onPressed});
+
+  @override
+  State<_RetryButton> createState() => _RetryButtonState();
+}
+
+class _RetryButtonState extends State<_RetryButton>
+    with SingleTickerProviderStateMixin {
+  bool _isLoading = false;
+  late AnimationController _controller;
+
+  @override
+  void initState() {
+    super.initState();
+    _controller = AnimationController(
+      vsync: this,
+      duration: const Duration(seconds: 1),
+    );
+  }
+
+  @override
+  void dispose() {
+    _controller.dispose();
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return GestureDetector(
+      onTapDown: (_) => setState(() {}),
+      onTapUp: (_) => setState(() {}),
+      onTapCancel: () => setState(() {}),
+      onTap: _isLoading
+          ? null
+          : () async {
+              setState(() {
+                _isLoading = true;
+              });
+              _controller.repeat();
+
+              // Run minimum delay and task in parallel
+              // This ensures we see the animation for at least 1s
+              // but also wait for the actual network request if it takes longer.
+              final minDelay = Future.delayed(
+                const Duration(milliseconds: 1000),
+              );
+              final task = widget.onPressed();
+
+              await Future.wait([minDelay, task]);
+
+              if (mounted) {
+                setState(() {
+                  _isLoading = false;
+                });
+                _controller.stop();
+              }
+            },
+      child: AnimatedContainer(
+        duration: const Duration(milliseconds: 200),
+        padding: const EdgeInsets.symmetric(horizontal: 32, vertical: 12),
+        decoration: BoxDecoration(
+          color: const Color(0xFF714FDC),
+          borderRadius: BorderRadius.circular(16),
+          boxShadow: [
+            BoxShadow(
+              color: const Color(0xFF714FDC).withOpacity(0.3),
+              blurRadius: 12,
+              offset: const Offset(0, 4),
+            ),
+          ],
+        ),
+        child: _isLoading
+            ? RotationTransition(
+                turns: _controller,
+                child: const Icon(Icons.refresh, color: Colors.white, size: 20),
+              )
+            : const Text(
+                "Retry",
+                style: TextStyle(
+                  color: Colors.white,
+                  fontWeight: FontWeight.bold,
+                  fontSize: 15,
+                ),
+              ),
       ),
     );
   }

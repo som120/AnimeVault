@@ -24,6 +24,7 @@ class _AnimeDetailScreenState extends State<AnimeDetailScreen>
   final ScrollController _scrollController = ScrollController();
   bool isDarkStatusBar = true; // banner visible at start
   bool isLoading = false;
+  bool hasError = false;
   bool isDescriptionExpanded = false;
   int selectedTab = 0; // 0: Information, 1: Characters, 2: Relations
   late AnimationController _bannerAnimationController;
@@ -73,23 +74,39 @@ class _AnimeDetailScreenState extends State<AnimeDetailScreen>
       return;
     }
 
-    final details = await AniListService.getAnimeDetails(id);
-    if (mounted) {
-      setState(() {
-        if (details != null) {
-          // Merge details into existing anime map
-          widget.anime.addAll(details);
+    // Reset error to allow loading state in tabs
+    setState(() => hasError = false);
 
-          // Start countdown timer if anime is airing
-          if (details['nextAiringEpisode'] != null) {
-            _countdownTimer?.cancel();
-            _countdownTimer = Timer.periodic(
-              const Duration(seconds: 60),
-              (_) => setState(() {}),
-            );
-          }
+    try {
+      final details = await AniListService.getAnimeDetails(id);
+      if (mounted) {
+        if (details != null) {
+          setState(() {
+            // Merge details into existing anime map
+            widget.anime.addAll(details);
+            hasError = false;
+
+            // Start countdown timer if anime is airing
+            if (details['nextAiringEpisode'] != null) {
+              _countdownTimer?.cancel();
+              _countdownTimer = Timer.periodic(
+                const Duration(seconds: 60),
+                (_) => setState(() {}),
+              );
+            }
+          });
+        } else {
+          setState(() {
+            hasError = true;
+          });
         }
-      });
+      }
+    } catch (e) {
+      if (mounted) {
+        setState(() {
+          hasError = true;
+        });
+      }
     }
   }
 
@@ -173,6 +190,16 @@ class _AnimeDetailScreenState extends State<AnimeDetailScreen>
                               bottomRight: Radius.circular(30),
                             ),
                           ),
+                          errorWidget: (context, url, error) => Container(
+                            color: Colors.grey[900],
+                            child: const Center(
+                              child: Icon(
+                                Icons.image_not_supported_rounded,
+                                color: Colors.white24,
+                                size: 50,
+                              ),
+                            ),
+                          ),
                         ),
                         Container(
                           decoration: BoxDecoration(
@@ -232,8 +259,26 @@ class _AnimeDetailScreenState extends State<AnimeDetailScreen>
                               borderRadius: BorderRadius.circular(16),
                             ),
                             errorWidget: (context, url, error) => Container(
-                              color: Colors.grey[300],
-                              child: const Icon(Icons.broken_image),
+                              color: Colors.grey[200],
+                              child: Column(
+                                mainAxisAlignment: MainAxisAlignment.center,
+                                children: [
+                                  Icon(
+                                    Icons.broken_image_rounded,
+                                    color: Colors.grey[400],
+                                    size: 40,
+                                  ),
+                                  const SizedBox(height: 8),
+                                  Text(
+                                    "No Image",
+                                    style: TextStyle(
+                                      color: Colors.grey[500],
+                                      fontSize: 12,
+                                      fontWeight: FontWeight.w500,
+                                    ),
+                                  ),
+                                ],
+                              ),
                             ),
                           ),
                         ),
@@ -831,6 +876,8 @@ class _AnimeDetailScreenState extends State<AnimeDetailScreen>
   }
 
   Widget _buildTabContent(Map<String, dynamic> anime) {
+    if (hasError) return _buildErrorState();
+
     switch (selectedTab) {
       case 0:
         return KeyedSubtree(
@@ -850,6 +897,44 @@ class _AnimeDetailScreenState extends State<AnimeDetailScreen>
       default:
         return const SizedBox.shrink();
     }
+  }
+
+  Widget _buildErrorState() {
+    return Center(
+      child: Padding(
+        padding: const EdgeInsets.all(32),
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Icon(Icons.error_outline_rounded, color: Colors.red[300], size: 48),
+            const SizedBox(height: 16),
+            const Text(
+              "Failed to load details",
+              style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold),
+            ),
+            const SizedBox(height: 8),
+            Text(
+              "Something went wrong while fetching data.",
+              textAlign: TextAlign.center,
+              style: TextStyle(color: Colors.grey[600], fontSize: 13),
+            ),
+            const SizedBox(height: 20),
+            ElevatedButton.icon(
+              onPressed: _fetchAnimeDetails,
+              icon: const Icon(Icons.refresh_rounded, size: 18),
+              label: const Text("Retry"),
+              style: ElevatedButton.styleFrom(
+                backgroundColor: AppTheme.primary,
+                foregroundColor: Colors.white,
+                shape: RoundedRectangleBorder(
+                  borderRadius: BorderRadius.circular(12),
+                ),
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
   }
 
   Widget _buildInformationTab(Map<String, dynamic> anime) {
@@ -1627,7 +1712,6 @@ class _AnimeDetailScreenState extends State<AnimeDetailScreen>
     super.dispose();
   }
 }
-
 
 class FadeInImageWidget extends StatelessWidget {
   final String imageUrl;

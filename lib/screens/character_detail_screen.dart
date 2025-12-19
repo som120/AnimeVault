@@ -25,6 +25,7 @@ class CharacterDetailScreen extends StatefulWidget {
 
 class _CharacterDetailScreenState extends State<CharacterDetailScreen> {
   bool isLoading = true;
+  bool hasError = false;
   Map<String, dynamic>? character;
   bool isDescriptionExpanded = false;
 
@@ -35,12 +36,29 @@ class _CharacterDetailScreenState extends State<CharacterDetailScreen> {
   }
 
   Future<void> _fetchDetails() async {
-    final data = await AniListService.getCharacterDetails(widget.characterId);
-    if (mounted) {
-      setState(() {
-        character = data;
-        isLoading = false;
-      });
+    try {
+      final data = await AniListService.getCharacterDetails(widget.characterId);
+      if (mounted) {
+        if (data != null) {
+          setState(() {
+            character = data;
+            isLoading = false;
+            hasError = false;
+          });
+        } else {
+          setState(() {
+            isLoading = false;
+            hasError = true;
+          });
+        }
+      }
+    } catch (e) {
+      if (mounted) {
+        setState(() {
+          isLoading = false;
+          hasError = true;
+        });
+      }
     }
   }
 
@@ -127,244 +145,306 @@ class _CharacterDetailScreenState extends State<CharacterDetailScreen> {
               onPressed: () => Navigator.pop(context),
             ),
           ),
-          SliverToBoxAdapter(
-            child: Padding(
-              padding: const EdgeInsets.all(20),
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  if (nativeName != null) ...[
-                    Center(
-                      child: Text(
-                        nativeName,
-                        style: TextStyle(
-                          fontSize: 28,
-                          fontWeight: FontWeight.bold,
-                          color: Colors.grey.shade800,
-                          letterSpacing: 1.0,
+          if (hasError)
+            SliverToBoxAdapter(
+              child: Padding(
+                padding: const EdgeInsets.symmetric(
+                  vertical: 40,
+                  horizontal: 24,
+                ),
+                child: Column(
+                  children: [
+                    Icon(
+                      Icons.error_outline_rounded,
+                      color: Colors.red[300],
+                      size: 60,
+                    ),
+                    const SizedBox(height: 24),
+                    const Text(
+                      "Character info unavailable",
+                      style: TextStyle(
+                        fontSize: 20,
+                        fontWeight: FontWeight.bold,
+                      ),
+                    ),
+                    const SizedBox(height: 12),
+                    Text(
+                      "We couldn't load the character details.\nPlease check your connection.",
+                      textAlign: TextAlign.center,
+                      style: TextStyle(color: Colors.grey[600], fontSize: 15),
+                    ),
+                    const SizedBox(height: 30),
+                    ElevatedButton.icon(
+                      onPressed: () {
+                        setState(() {
+                          isLoading = true;
+                          hasError = false;
+                        });
+                        _fetchDetails();
+                      },
+                      icon: const Icon(Icons.refresh_rounded),
+                      label: const Text("Retry Connection"),
+                      style: ElevatedButton.styleFrom(
+                        backgroundColor: AppTheme.primary,
+                        foregroundColor: Colors.white,
+                        padding: const EdgeInsets.symmetric(
+                          horizontal: 24,
+                          vertical: 12,
+                        ),
+                        shape: RoundedRectangleBorder(
+                          borderRadius: BorderRadius.circular(15),
                         ),
                       ),
                     ),
-                    const SizedBox(height: 25),
+                    const SizedBox(height: 40),
                   ],
-
-                  // Info Grid
-                  Container(
-                    padding: const EdgeInsets.symmetric(
-                      vertical: 20,
-                      horizontal: 10,
-                    ),
-                    decoration: BoxDecoration(
-                      color: Colors.white,
-                      borderRadius: BorderRadius.circular(20),
-                      boxShadow: [
-                        BoxShadow(
-                          color: Colors.black.withOpacity(0.08),
-                          blurRadius: 15,
-                          offset: const Offset(0, 5),
-                        ),
-                      ],
-                    ),
-                    child: Column(
-                      children: [
-                        Row(
-                          mainAxisAlignment: MainAxisAlignment.spaceAround,
-                          children: [
-                            _buildInfoItem(
-                              "Age",
-                              age,
-                              Icons.cake_rounded,
-                              Colors.pinkAccent,
-                            ),
-                            _buildInfoItem(
-                              "Gender",
-                              gender,
-                              Icons.person_rounded,
-                              Colors.blueAccent,
-                            ),
-                            _buildInfoItem(
-                              "Blood",
-                              bloodType,
-                              Icons.bloodtype_rounded,
-                              Colors.redAccent,
-                            ),
-                          ],
-                        ),
-                        const Padding(
-                          padding: EdgeInsets.symmetric(vertical: 15),
-                          child: Divider(indent: 20, endIndent: 20),
-                        ),
-                        Row(
-                          mainAxisAlignment: MainAxisAlignment.spaceAround,
-                          children: [
-                            _buildInfoItem(
-                              "Birthday",
-                              birthday,
-                              Icons.calendar_today_rounded,
-                              Colors.orangeAccent,
-                            ),
-                            _buildInfoItem(
-                              "Favourites",
-                              favourites,
-                              Icons.favorite_rounded,
-                              Colors.red,
-                            ),
-                          ],
-                        ),
-                      ],
-                    ),
-                  ),
-
-                  const SizedBox(height: 30),
-
-                  // Description
-                  const Text(
-                    "About",
-                    style: TextStyle(fontSize: 22, fontWeight: FontWeight.bold),
-                  ),
-                  const SizedBox(height: 12),
-                  AnimatedCrossFade(
-                    firstChild: Text(
-                      description,
-                      maxLines: 6,
-                      overflow: TextOverflow.ellipsis,
-                      style: TextStyle(
-                        fontSize: 16,
-                        color: Colors.grey.shade700,
-                        height: 1.6,
-                      ),
-                    ),
-                    secondChild: Text(
-                      description,
-                      style: TextStyle(
-                        fontSize: 16,
-                        color: Colors.grey.shade700,
-                        height: 1.6,
-                      ),
-                    ),
-                    crossFadeState: isDescriptionExpanded
-                        ? CrossFadeState.showSecond
-                        : CrossFadeState.showFirst,
-                    duration: const Duration(milliseconds: 300),
-                  ),
-                  GestureDetector(
-                    onTap: () {
-                      setState(() {
-                        isDescriptionExpanded = !isDescriptionExpanded;
-                      });
-                    },
-                    child: Padding(
-                      padding: const EdgeInsets.only(top: 10.0),
-                      child: Row(
-                        mainAxisAlignment: MainAxisAlignment.center,
-                        children: [
-                          Text(
-                            isDescriptionExpanded ? "Read Less" : "Read More",
-                            style: TextStyle(
-                              color: AppTheme.primary,
-                              fontWeight: FontWeight.bold,
-                              fontSize: 15,
-                            ),
+                ),
+              ),
+            )
+          else
+            SliverToBoxAdapter(
+              child: Padding(
+                padding: const EdgeInsets.all(20),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    if (nativeName != null) ...[
+                      Center(
+                        child: Text(
+                          nativeName,
+                          style: TextStyle(
+                            fontSize: 28,
+                            fontWeight: FontWeight.bold,
+                            color: Colors.grey.shade800,
+                            letterSpacing: 1.0,
                           ),
-                          Icon(
-                            isDescriptionExpanded
-                                ? Icons.keyboard_arrow_up
-                                : Icons.keyboard_arrow_down,
-                            color: AppTheme.primary,
+                        ),
+                      ),
+                      const SizedBox(height: 25),
+                    ],
+
+                    // Info Grid
+                    Container(
+                      padding: const EdgeInsets.symmetric(
+                        vertical: 20,
+                        horizontal: 10,
+                      ),
+                      decoration: BoxDecoration(
+                        color: Colors.white,
+                        borderRadius: BorderRadius.circular(20),
+                        boxShadow: [
+                          BoxShadow(
+                            color: Colors.black.withOpacity(0.08),
+                            blurRadius: 15,
+                            offset: const Offset(0, 5),
+                          ),
+                        ],
+                      ),
+                      child: Column(
+                        children: [
+                          Row(
+                            mainAxisAlignment: MainAxisAlignment.spaceAround,
+                            children: [
+                              _buildInfoItem(
+                                "Age",
+                                age,
+                                Icons.cake_rounded,
+                                Colors.pinkAccent,
+                              ),
+                              _buildInfoItem(
+                                "Gender",
+                                gender,
+                                Icons.person_rounded,
+                                Colors.blueAccent,
+                              ),
+                              _buildInfoItem(
+                                "Blood",
+                                bloodType,
+                                Icons.bloodtype_rounded,
+                                Colors.redAccent,
+                              ),
+                            ],
+                          ),
+                          const Padding(
+                            padding: EdgeInsets.symmetric(vertical: 15),
+                            child: Divider(indent: 20, endIndent: 20),
+                          ),
+                          Row(
+                            mainAxisAlignment: MainAxisAlignment.spaceAround,
+                            children: [
+                              _buildInfoItem(
+                                "Birthday",
+                                birthday,
+                                Icons.calendar_today_rounded,
+                                Colors.orangeAccent,
+                              ),
+                              _buildInfoItem(
+                                "Favourites",
+                                favourites,
+                                Icons.favorite_rounded,
+                                Colors.red,
+                              ),
+                            ],
                           ),
                         ],
                       ),
                     ),
-                  ),
 
-                  const SizedBox(height: 30),
+                    const SizedBox(height: 30),
 
-                  // Appearances
-                  if (character?['media']?['nodes'] != null &&
-                      (character!['media']['nodes'] as List).isNotEmpty) ...[
+                    // Description
                     const Text(
-                      "Appearances",
+                      "About",
                       style: TextStyle(
                         fontSize: 22,
                         fontWeight: FontWeight.bold,
                       ),
                     ),
-                    const SizedBox(height: 15),
-                    SizedBox(
-                      height: 200,
-                      child: ListView.separated(
-                        scrollDirection: Axis.horizontal,
-                        physics: const BouncingScrollPhysics(),
-                        cacheExtent: 300,
-                        addRepaintBoundaries: true,
-                        itemCount:
-                            (character!['media']['nodes'] as List).length,
-                        separatorBuilder: (context, index) =>
-                            const SizedBox(width: 15),
-                        itemBuilder: (context, index) {
-                          final anime = character!['media']['nodes'][index];
-                          final title = anime['title']?['romaji'] ?? "Unknown";
-                          final image = anime['coverImage']?['medium'];
-
-                          return RepaintBoundary(
-                            child: GestureDetector(
-                              onTap: () {
-                                Navigator.push(
-                                  context,
-                                  MaterialPageRoute(
-                                    builder: (context) =>
-                                        AnimeDetailScreen(anime: anime),
-                                  ),
-                                );
-                              },
-                              child: SizedBox(
-                                width: 120,
-                                child: Column(
-                                  crossAxisAlignment: CrossAxisAlignment.start,
-                                  children: [
-                                    image != null
-                                        ? FadeInImageWidget(
-                                            imageUrl: image,
-                                            width: 120,
-                                            height: 160,
-                                          )
-                                        : Container(
-                                            width: 120,
-                                            height: 160,
-                                            decoration: BoxDecoration(
-                                              color: Colors.grey[300],
-                                              borderRadius:
-                                                  BorderRadius.circular(12),
-                                            ),
-                                            child: const Icon(
-                                              Icons.image,
-                                              color: Colors.grey,
-                                            ),
-                                          ),
-                                    const SizedBox(height: 8),
-                                    Text(
-                                      title,
-                                      maxLines: 1,
-                                      overflow: TextOverflow.ellipsis,
-                                      style: const TextStyle(
-                                        fontSize: 13,
-                                        fontWeight: FontWeight.w600,
-                                      ),
-                                    ),
-                                  ],
-                                ),
+                    const SizedBox(height: 12),
+                    AnimatedCrossFade(
+                      firstChild: Text(
+                        description,
+                        maxLines: 6,
+                        overflow: TextOverflow.ellipsis,
+                        style: TextStyle(
+                          fontSize: 16,
+                          color: Colors.grey.shade700,
+                          height: 1.6,
+                        ),
+                      ),
+                      secondChild: Text(
+                        description,
+                        style: TextStyle(
+                          fontSize: 16,
+                          color: Colors.grey.shade700,
+                          height: 1.6,
+                        ),
+                      ),
+                      crossFadeState: isDescriptionExpanded
+                          ? CrossFadeState.showSecond
+                          : CrossFadeState.showFirst,
+                      duration: const Duration(milliseconds: 300),
+                    ),
+                    GestureDetector(
+                      onTap: () {
+                        setState(() {
+                          isDescriptionExpanded = !isDescriptionExpanded;
+                        });
+                      },
+                      child: Padding(
+                        padding: const EdgeInsets.only(top: 10.0),
+                        child: Row(
+                          mainAxisAlignment: MainAxisAlignment.center,
+                          children: [
+                            Text(
+                              isDescriptionExpanded ? "Read Less" : "Read More",
+                              style: TextStyle(
+                                color: AppTheme.primary,
+                                fontWeight: FontWeight.bold,
+                                fontSize: 15,
                               ),
                             ),
-                          );
-                        },
+                            Icon(
+                              isDescriptionExpanded
+                                  ? Icons.keyboard_arrow_up
+                                  : Icons.keyboard_arrow_down,
+                              color: AppTheme.primary,
+                            ),
+                          ],
+                        ),
                       ),
                     ),
+
+                    const SizedBox(height: 30),
+
+                    // Appearances
+                    if (character?['media']?['nodes'] != null &&
+                        (character!['media']['nodes'] as List).isNotEmpty) ...[
+                      const Text(
+                        "Appearances",
+                        style: TextStyle(
+                          fontSize: 22,
+                          fontWeight: FontWeight.bold,
+                        ),
+                      ),
+                      const SizedBox(height: 15),
+                      SizedBox(
+                        height: 200,
+                        child: ListView.separated(
+                          scrollDirection: Axis.horizontal,
+                          physics: const BouncingScrollPhysics(),
+                          cacheExtent: 300,
+                          addRepaintBoundaries: true,
+                          itemCount:
+                              (character!['media']['nodes'] as List).length,
+                          separatorBuilder: (context, index) =>
+                              const SizedBox(width: 15),
+                          itemBuilder: (context, index) {
+                            final anime = character!['media']['nodes'][index];
+                            final title =
+                                anime['title']?['romaji'] ?? "Unknown";
+                            final image = anime['coverImage']?['medium'];
+
+                            return RepaintBoundary(
+                              child: GestureDetector(
+                                onTap: () {
+                                  Navigator.push(
+                                    context,
+                                    MaterialPageRoute(
+                                      builder: (context) =>
+                                          AnimeDetailScreen(anime: anime),
+                                    ),
+                                  );
+                                },
+                                child: SizedBox(
+                                  width: 120,
+                                  child: Column(
+                                    crossAxisAlignment:
+                                        CrossAxisAlignment.start,
+                                    children: [
+                                      image != null
+                                          ? FadeInImageWidget(
+                                              imageUrl: image,
+                                              width: 120,
+                                              height: 160,
+                                            )
+                                          : Container(
+                                              width: 120,
+                                              height: 160,
+                                              decoration: BoxDecoration(
+                                                color: Colors.grey[300],
+                                                borderRadius:
+                                                    BorderRadius.circular(12),
+                                              ),
+                                              child: const Icon(
+                                                Icons.image,
+                                                color: Colors.grey,
+                                              ),
+                                            ),
+                                      const SizedBox(height: 8),
+                                      Text(
+                                        title,
+                                        maxLines: 1,
+                                        overflow: TextOverflow.ellipsis,
+                                        style: const TextStyle(
+                                          fontSize: 13,
+                                          fontWeight: FontWeight.w600,
+                                        ),
+                                      ),
+                                    ],
+                                  ),
+                                ),
+                              ),
+                            );
+                          },
+                        ),
+                      ),
+                    ],
+                    const SizedBox(height: 40),
                   ],
-                  const SizedBox(height: 40),
-                ],
+                ),
               ),
             ),
-          ),
         ],
       ),
     );
