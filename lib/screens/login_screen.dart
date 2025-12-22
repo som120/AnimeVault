@@ -208,18 +208,18 @@ class _LoginScreenState extends State<LoginScreen> {
                         const SizedBox(height: 16), // Reduced spacing
                         // Password Field
                         _buildLabel("Password"),
-                        const SizedBox(height: 6),
+                        const SizedBox(height: 8),
                         _buildTextField(
                           controller: _passwordController,
-                          hintText: "••••••••",
+                          hintText: "• • • • • • • •",
                           obscureText: _obscurePassword,
                           showToggle: true,
                           validator: (value) {
                             if (value == null || value.isEmpty) {
                               return "Password is required";
                             }
-                            if (value.length < 6) {
-                              return "Password must be at least 6 characters";
+                            if (value.length < 8) {
+                              return "Password must be at least 8 characters";
                             }
                             return null;
                           },
