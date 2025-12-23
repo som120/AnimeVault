@@ -1,4 +1,5 @@
 import 'package:ainme_vault/main.dart';
+import 'package:ainme_vault/screens/forgot_password_screen.dart';
 import 'package:flutter/material.dart';
 import 'package:ainme_vault/theme/app_theme.dart';
 import 'package:ainme_vault/screens/signup_screen.dart';
@@ -41,6 +42,18 @@ class _LoginScreenState extends State<LoginScreen> {
         password: _passwordController.text.trim(),
       );
 
+      final user = FirebaseAuth.instance.currentUser;
+
+      if (user != null && !user.emailVerified) {
+        await FirebaseAuth.instance.signOut();
+
+        _showSnackBar(
+          message: "Please verify your email before logging in",
+          isError: true,
+        );
+        return;
+      }
+
       _showSnackBar(message: "Login successful", isError: false);
 
       Navigator.pushReplacement(
@@ -48,12 +61,14 @@ class _LoginScreenState extends State<LoginScreen> {
         MaterialPageRoute(builder: (_) => const MainScreen()),
       );
     } on FirebaseAuthException catch (e) {
-      String message = "Login failed";
+      String message = "Incorrect email or password";
 
-      if (e.code == 'user-not-found') {
-        message = "No account found with this email";
-      } else if (e.code == 'wrong-password') {
-        message = "Incorrect password";
+      if (e.code == 'invalid-credential') {
+        message = "Invalid email or password";
+      } else if (e.code == 'user-disabled') {
+        message = "This account has been disabled";
+      } else {
+        message = "Login failed. Please try again";
       }
 
       _showSnackBar(message: message, isError: true);
@@ -68,7 +83,7 @@ class _LoginScreenState extends State<LoginScreen> {
     ScaffoldMessenger.of(context).showSnackBar(
       SnackBar(
         behavior: SnackBarBehavior.floating,
-        margin: const EdgeInsets.symmetric(horizontal: 80, vertical: 16),
+        margin: const EdgeInsets.symmetric(horizontal: 50, vertical: 16),
         backgroundColor: isError ? Colors.redAccent : AppTheme.accent,
         elevation: 6,
         shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
@@ -229,7 +244,15 @@ class _LoginScreenState extends State<LoginScreen> {
                         Align(
                           alignment: Alignment.centerRight,
                           child: TextButton(
-                            onPressed: () {},
+                            onPressed: () {
+                              Navigator.push(
+                                context,
+                                MaterialPageRoute(
+                                  builder: (_) => const ForgotPasswordScreen(),
+                                ),
+                              );
+                            },
+
                             style: TextButton.styleFrom(
                               padding: const EdgeInsets.fromLTRB(0, 4, 0, 4),
                               minimumSize: Size.zero,
