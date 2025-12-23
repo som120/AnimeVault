@@ -9,6 +9,7 @@ import 'package:url_launcher/url_launcher.dart';
 import 'package:cached_network_image/cached_network_image.dart';
 import 'package:ainme_vault/screens/search_screen.dart';
 import 'package:ainme_vault/utils/light_skeleton.dart';
+import 'package:connectivity_plus/connectivity_plus.dart';
 
 class AnimeDetailScreen extends StatefulWidget {
   final Map<String, dynamic> anime;
@@ -31,6 +32,7 @@ class _AnimeDetailScreenState extends State<AnimeDetailScreen>
   late Animation<double> _bannerAnimation;
   late AnimationController _dotAnimationController;
   Timer? _countdownTimer;
+  StreamSubscription<List<ConnectivityResult>>? _connectivitySubscription;
 
   @override
   void initState() {
@@ -65,6 +67,16 @@ class _AnimeDetailScreenState extends State<AnimeDetailScreen>
 
     // Listen to scroll
     _scrollController.addListener(_handleScroll);
+
+    _connectivitySubscription = Connectivity().onConnectivityChanged.listen(
+      _updateConnectionStatus,
+    );
+  }
+
+  void _updateConnectionStatus(List<ConnectivityResult> result) {
+    if (!result.contains(ConnectivityResult.none) && hasError) {
+      _fetchAnimeDetails();
+    }
   }
 
   Future<void> _fetchAnimeDetails() async {
@@ -1705,6 +1717,7 @@ class _AnimeDetailScreenState extends State<AnimeDetailScreen>
 
   @override
   void dispose() {
+    _connectivitySubscription?.cancel();
     _countdownTimer?.cancel();
     _scrollController.dispose();
     _bannerAnimationController.dispose();

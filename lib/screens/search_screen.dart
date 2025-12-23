@@ -8,6 +8,7 @@ import 'package:shimmer/shimmer.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
 import 'package:cached_network_image/cached_network_image.dart';
+import 'package:connectivity_plus/connectivity_plus.dart';
 
 class SearchScreen extends StatefulWidget {
   final String? initialGenre;
@@ -27,6 +28,7 @@ class _SearchScreenState extends State<SearchScreen> {
   bool _isScrolled = false;
   final ScrollController _scrollController = ScrollController();
   Timer? _debounce;
+  StreamSubscription<List<ConnectivityResult>>? _connectivitySubscription;
 
   String selectedFilter = "Top 100";
 
@@ -45,6 +47,54 @@ class _SearchScreenState extends State<SearchScreen> {
     });
 
     _init();
+    _connectivitySubscription = Connectivity().onConnectivityChanged.listen(
+      _updateConnectionStatus,
+    );
+  }
+
+  void _updateConnectionStatus(List<ConnectivityResult> result) {
+    final bool isOnline = !result.contains(ConnectivityResult.none);
+
+    debugPrint(
+      "🌐 Connectivity changed: ${isOnline ? 'ONLINE' : 'OFFLINE'} | hasError: $hasError | selectedFilter: $selectedFilter",
+    );
+
+    // Only retry if we're transitioning from offline to online AND we have an error
+    if (isOnline && hasError) {
+      debugPrint("🔄 Auto-retry triggered for filter: $selectedFilter");
+      // Retry the last action
+      _retryLastAction();
+    } else if (!isOnline && !hasError && animeList.isEmpty && !isLoading) {
+      // If we lose connection and have no content, show error
+      debugPrint("❌ Network lost with no content, showing error");
+      setState(() {
+        hasError = true;
+      });
+    }
+  }
+
+  Future<void> _retryLastAction() async {
+    if (selectedFilter == "Search") {
+      await _performSearch(_controller.text);
+    } else if (selectedFilter == "Calendar") {
+      // Calendar view has its own error handling, just refresh the state
+      setState(() {
+        hasError = false;
+      });
+    } else if (selectedFilter == "Top 100") {
+      await _fetchAnimeByCategory("Top 100", AniListService.getTopAnime);
+    } else if (selectedFilter == "Popular") {
+      await _fetchAnimeByCategory("Popular", AniListService.getPopularAnime);
+    } else if (selectedFilter == "Upcoming") {
+      await _fetchAnimeByCategory("Upcoming", AniListService.getUpcomingAnime);
+    } else if (selectedFilter == "Airing") {
+      await _fetchAnimeByCategory("Airing", AniListService.getAiringAnime);
+    } else if (selectedFilter == "Movies") {
+      await _fetchAnimeByCategory("Movies", AniListService.getTopMovies);
+    } else {
+      // Fallback: default to Top 100
+      await _fetchAnimeByCategory("Top 100", AniListService.getTopAnime);
+    }
   }
 
   void _onFocusChange() {
@@ -124,7 +174,8 @@ class _SearchScreenState extends State<SearchScreen> {
     String filterName,
     Future<List> Function() apiCall,
   ) async {
-    // Prevent unnecessary reloads
+    // Prevent unnecessary reloads ONLY if we're not in an error state
+    // This allows auto-retry to work when network is restored
     if (selectedFilter == filterName &&
         !isLoading &&
         animeList.isNotEmpty &&
@@ -387,6 +438,45 @@ class _SearchScreenState extends State<SearchScreen> {
     );
   }
 
+  Widget _buildNoResultsWidget() {
+    return Center(
+      child: Column(
+        mainAxisAlignment: MainAxisAlignment.center,
+        children: [
+          Container(
+            padding: const EdgeInsets.all(20),
+            decoration: BoxDecoration(
+              color: const Color(0xFFF3F4F6),
+              shape: BoxShape.circle,
+            ),
+            child: Icon(
+              Icons.search_off_rounded,
+              size: 50,
+              color: Colors.grey.shade400,
+            ),
+          ),
+          const SizedBox(height: 20),
+          Text(
+            "No Anime Found",
+            style: TextStyle(
+              fontSize: 18,
+              fontWeight: FontWeight.bold,
+              color: Colors.grey.shade800,
+            ),
+          ),
+          const SizedBox(height: 8),
+          Text(
+            "We couldn't find any anime\nmatching your search.",
+            textAlign: TextAlign.center,
+            style: TextStyle(fontSize: 14, color: Colors.grey.shade600),
+          ),
+          // Push it up a bit visually to stay centered in the "content" area
+          const SizedBox(height: 60),
+        ],
+      ),
+    );
+  }
+
   Widget _buildErrorWidget() {
     return Center(
       child: Container(
@@ -612,6 +702,8 @@ class _SearchScreenState extends State<SearchScreen> {
                     ? const AnimeListShimmer()
                     : hasError
                     ? _buildErrorWidget()
+                    : animeList.isEmpty && selectedFilter == "Search"
+                    ? _buildNoResultsWidget()
                     : ListView.builder(
                         controller: _scrollController,
                         physics: const BouncingScrollPhysics(),
@@ -669,6 +761,7 @@ class _SearchScreenState extends State<SearchScreen> {
 
   @override
   void dispose() {
+    _connectivitySubscription?.cancel();
     _searchFocus.removeListener(_onFocusChange);
     _searchFocus.dispose();
     _scrollController.dispose();

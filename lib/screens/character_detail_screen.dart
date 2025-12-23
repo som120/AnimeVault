@@ -3,6 +3,8 @@ import 'package:ainme_vault/theme/app_theme.dart';
 import 'package:ainme_vault/screens/anime_detail_screen.dart';
 import 'package:flutter/material.dart';
 import 'package:cached_network_image/cached_network_image.dart';
+import 'package:connectivity_plus/connectivity_plus.dart';
+import 'dart:async';
 
 class CharacterDetailScreen extends StatefulWidget {
   final int characterId;
@@ -28,11 +30,31 @@ class _CharacterDetailScreenState extends State<CharacterDetailScreen> {
   bool hasError = false;
   Map<String, dynamic>? character;
   bool isDescriptionExpanded = false;
+  StreamSubscription<List<ConnectivityResult>>? _connectivitySubscription;
 
   @override
   void initState() {
     super.initState();
     _fetchDetails();
+    _connectivitySubscription = Connectivity().onConnectivityChanged.listen(
+      _updateConnectionStatus,
+    );
+  }
+
+  void _updateConnectionStatus(List<ConnectivityResult> result) {
+    if (!result.contains(ConnectivityResult.none) && hasError) {
+      setState(() {
+        isLoading = true;
+        hasError = false;
+      });
+      _fetchDetails();
+    }
+  }
+
+  @override
+  void dispose() {
+    _connectivitySubscription?.cancel();
+    super.dispose();
   }
 
   Future<void> _fetchDetails() async {
