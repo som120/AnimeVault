@@ -40,14 +40,26 @@ class _SignupScreenState extends State<SignupScreen> {
     setState(() => _isLoading = true);
 
     try {
-      await FirebaseAuth.instance.createUserWithEmailAndPassword(
-        email: _emailController.text.trim(),
-        password: _passwordController.text.trim(),
+      UserCredential userCredential = await FirebaseAuth.instance
+          .createUserWithEmailAndPassword(
+            email: _emailController.text.trim(),
+            password: _passwordController.text.trim(),
+          );
+
+      final user = userCredential.user;
+
+      if (user != null && !user.emailVerified) {
+        await user.updateDisplayName(_usernameController.text.trim());
+        await user.sendEmailVerification();
+        await FirebaseAuth.instance.signOut();
+      }
+
+      _showSnackBar(
+        message: "Verification email sent. Please verify before logging in.",
+        isError: false,
       );
 
-      _showSnackBar(message: "Account created successfully", isError: false);
-
-      Navigator.pop(context); // Back to login
+      Navigator.pop(context); // Back to Login screen
     } on FirebaseAuthException catch (e) {
       String message = "Signup failed";
 
