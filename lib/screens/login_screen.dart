@@ -1,4 +1,5 @@
 import 'package:ainme_vault/main.dart';
+import 'package:ainme_vault/screens/forgot_password_screen.dart';
 import 'package:flutter/material.dart';
 import 'package:ainme_vault/theme/app_theme.dart';
 import 'package:ainme_vault/screens/signup_screen.dart';
@@ -243,7 +244,15 @@ class _LoginScreenState extends State<LoginScreen> {
                         Align(
                           alignment: Alignment.centerRight,
                           child: TextButton(
-                            onPressed: () {},
+                            onPressed: () {
+                              Navigator.push(
+                                context,
+                                MaterialPageRoute(
+                                  builder: (_) => const ForgotPasswordScreen(),
+                                ),
+                              );
+                            },
+
                             style: TextButton.styleFrom(
                               padding: const EdgeInsets.fromLTRB(0, 4, 0, 4),
                               minimumSize: Size.zero,
