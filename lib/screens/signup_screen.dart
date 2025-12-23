@@ -189,7 +189,7 @@ class _SignupScreenState extends State<SignupScreen> {
                         const SizedBox(height: 4),
                         _buildTextField(
                           controller: _usernameController,
-                          hintText: "@Jean.McGlynn",
+                          hintText: "Jean.McGlynn",
                           validator: (value) {
                             if (value == null || value.trim().isEmpty) {
                               return "Username is required";
@@ -208,7 +208,7 @@ class _SignupScreenState extends State<SignupScreen> {
                         const SizedBox(height: 4),
                         _buildTextField(
                           controller: _emailController,
-                          hintText: "Example@gmail.com",
+                          hintText: "example@gmail.com",
                           keyboardType: TextInputType.emailAddress,
                           validator: (value) {
                             if (value == null || value.trim().isEmpty) {
