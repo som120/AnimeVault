@@ -20,7 +20,6 @@ class ProfileScreen extends StatelessWidget {
       },
       child: Scaffold(
         backgroundColor: const Color(0xFFF5F3FF),
-
         body: SingleChildScrollView(
           child: Column(
             children: [
@@ -28,9 +27,11 @@ class ProfileScreen extends StatelessWidget {
               // TOP CURVED GRADIENT CARD
               // ---------------------------
               Stack(
+                clipBehavior: Clip.none,
+                alignment: Alignment.center,
                 children: [
                   Container(
-                    height: 260,
+                    height: 150,
                     width: double.infinity,
                     decoration: const BoxDecoration(
                       gradient: LinearGradient(
@@ -39,71 +40,139 @@ class ProfileScreen extends StatelessWidget {
                         end: Alignment.bottomRight,
                       ),
                       borderRadius: BorderRadius.only(
-                        bottomLeft: Radius.circular(40),
-                        bottomRight: Radius.circular(40),
+                        bottomLeft: Radius.circular(30),
+                        bottomRight: Radius.circular(30),
                       ),
                     ),
                   ),
 
-                  // Avatar + Username
-                  Positioned.fill(
-                    child: Column(
-                      mainAxisAlignment: MainAxisAlignment.center,
-                      children: [
-                        CircleAvatar(
-                          radius: 48,
-                          backgroundColor: Colors.white,
-                          child: CircleAvatar(
-                            radius: 44,
-                            backgroundImage: AssetImage(
-                              "assets/avatar.png", // your avatar file path
-                            ),
+                  // Avatar
+                  Positioned(
+                    bottom: -60,
+                    child: Container(
+                      decoration: BoxDecoration(
+                        shape: BoxShape.circle,
+                        border: Border.all(color: Colors.white, width: 4),
+                        boxShadow: [
+                          BoxShadow(
+                            color: Colors.black.withOpacity(0.1),
+                            blurRadius: 10,
+                            offset: const Offset(0, 5),
                           ),
-                        ),
-                        const SizedBox(height: 12),
-                        const Text(
-                          "User Name",
-                          style: TextStyle(
-                            fontSize: 22,
-                            fontWeight: FontWeight.w700,
-                            color: Colors.white,
-                          ),
-                        ),
-                      ],
+                        ],
+                      ),
+                      child: const CircleAvatar(
+                        radius: 60,
+                        backgroundImage: AssetImage("assets/avatar.png"),
+                      ),
                     ),
                   ),
                 ],
               ),
 
-              const SizedBox(height: 30),
+              const SizedBox(height: 65), // Space for protruding avatar
+
+              const Text(
+                "User Name",
+                style: TextStyle(
+                  fontSize: 24,
+                  fontWeight: FontWeight.w800,
+                  color: Colors.black87,
+                ),
+              ),
+
+              const SizedBox(height: 10),
 
               // ---------------------------
               // STATS OVERVIEW
               // ---------------------------
               Padding(
-                padding: const EdgeInsets.symmetric(horizontal: 20),
-                child: Row(
-                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                  children: [
-                    _buildStatCard("86.5", "Hours"),
-                    _buildStatCard("340", "Completed"),
-                    _buildStatCard("5", "Reviews"),
-                  ],
+                padding: const EdgeInsets.symmetric(
+                  horizontal: 35,
+                ), // Smaller card width
+                child: Container(
+                  padding: const EdgeInsets.symmetric(vertical: 12),
+                  decoration: BoxDecoration(
+                    color: Colors.white,
+                    borderRadius: BorderRadius.circular(20),
+                    boxShadow: [
+                      BoxShadow(
+                        color: Colors.black12.withOpacity(0.05),
+                        blurRadius: 10,
+                        offset: const Offset(0, 5),
+                      ),
+                    ],
+                  ),
+                  child: Row(
+                    mainAxisAlignment: MainAxisAlignment.spaceEvenly,
+                    children: [
+                      _buildStatItem("86.5", "Hours"),
+                      _buildStatItem("340", "Completed"),
+                      _buildStatItem("5", "Reviews"),
+                    ],
+                  ),
                 ),
               ),
 
-              const SizedBox(height: 35),
+              const SizedBox(height: 23),
 
               // ---------------------------
               // SETTINGS LIST
               // ---------------------------
-              _buildSettingsTile(Icons.edit, "Edit Profile", context),
-              _buildSettingsTile(Icons.brush, "Customize Avatar", context),
-              _buildSettingsTile(Icons.brightness_6, "Change Theme", context),
-              _buildSettingsTile(Icons.settings, "Account Settings", context),
-              _buildSettingsTile(Icons.logout, "Logout", context),
+              Padding(
+                padding: const EdgeInsets.symmetric(
+                  horizontal: 15,
+                ), // Wider card
+                child: Container(
+                  padding: const EdgeInsets.fromLTRB(20, 20, 20, 20),
+                  decoration: BoxDecoration(
+                    color: Colors.white,
+                    borderRadius: BorderRadius.circular(20),
+                    boxShadow: [
+                      BoxShadow(
+                        color: Colors.black12.withOpacity(0.05),
+                        blurRadius: 10,
+                        offset: const Offset(0, 5),
+                      ),
+                    ],
+                  ),
+                  child: Column(
+                    children: [
+                      _buildSettingsTile(
+                        Icons.edit,
+                        "Edit Profile",
+                        context,
+                        false,
+                      ),
+                      const SizedBox(height: 20),
+                      _buildSettingsTile(
+                        Icons.palette,
+                        "Customize Avatar",
+                        context,
+                        false,
+                      ),
+                      const SizedBox(height: 20),
+                      _buildSettingsTile(
+                        Icons.dark_mode,
+                        "Change Theme",
+                        context,
+                        false,
+                      ),
+                      const SizedBox(height: 20),
+                      _buildSettingsTile(
+                        Icons.settings,
+                        "Account Settings",
+                        context,
+                        false,
+                      ),
+                      const SizedBox(height: 20),
+                      _buildSettingsTile(Icons.logout, "Logout", context, true),
+                    ],
+                  ),
+                ),
+              ),
 
-              const SizedBox(height: 40),
+              const SizedBox(height: 35), // Same space as above the card
             ],
           ),
         ),
@@ -112,75 +181,141 @@ class ProfileScreen extends StatelessWidget {
   }
 
   // ---------------------------
-  // STAT CARD WIDGET
+  // STAT ITEM WIDGET
   // ---------------------------
-  Widget _buildStatCard(String value, String label) {
-    return Container(
-      height: 90,
-      width: 105,
-      decoration: BoxDecoration(
-        color: Colors.white,
-        borderRadius: BorderRadius.circular(20),
-        boxShadow: [
-          BoxShadow(
-            color: Colors.black12.withOpacity(0.05),
-            blurRadius: 8,
-            offset: const Offset(0, 4),
+  Widget _buildStatItem(String value, String label) {
+    return Column(
+      mainAxisAlignment: MainAxisAlignment.center,
+      children: [
+        Text(
+          value,
+          style: const TextStyle(
+            fontSize: 20,
+            fontWeight: FontWeight.w800,
+            color: Color(0xFF8A5CF6),
           ),
-        ],
-      ),
-      child: Column(
-        mainAxisAlignment: MainAxisAlignment.center,
-        children: [
-          Text(
-            value,
-            style: const TextStyle(
-              fontSize: 22,
-              fontWeight: FontWeight.w800,
-              color: Color(0xFF8A5CF6),
-            ),
-          ),
-          const SizedBox(height: 4),
-          Text(
-            label,
-            style: const TextStyle(fontSize: 14, color: Colors.black54),
-          ),
-        ],
-      ),
+        ),
+        const SizedBox(height: 4),
+        Text(
+          label,
+          style: const TextStyle(fontSize: 13, color: Colors.black54),
+        ),
+      ],
     );
   }
 
   // ---------------------------
   // SETTINGS TILE WIDGET
   // ---------------------------
-  Widget _buildSettingsTile(IconData icon, String title, BuildContext context) {
-    return Column(
-      children: [
-        ListTile(
-          leading: Icon(icon, color: Color(0xFF8A5CF6), size: 26),
-          title: Text(
-            title,
-            style: const TextStyle(fontSize: 17, fontWeight: FontWeight.w600),
-          ),
-          trailing: const Icon(Icons.arrow_forward_ios, size: 18),
-          onTap: () {
-            if (title == "Logout") {
-              Navigator.push(
-                context,
-                MaterialPageRoute(builder: (context) => const LoginScreen()),
-              );
-            } else {
-              ScaffoldMessenger.of(
-                context,
-              ).showSnackBar(SnackBar(content: Text("$title tapped")));
-            }
-          },
+  // ---------------------------
+  // SETTINGS TILE WIDGET
+  // ---------------------------
+  Widget _buildSettingsTile(
+    IconData icon,
+    String title,
+    BuildContext context,
+    bool isDestructive,
+  ) {
+    return _ScaleButton(
+      onTap: () {
+        if (title == "Logout") {
+          Navigator.push(
+            context,
+            MaterialPageRoute(builder: (context) => const LoginScreen()),
+          );
+        } else {
+          ScaffoldMessenger.of(
+            context,
+          ).showSnackBar(SnackBar(content: Text("$title tapped")));
+        }
+      },
+      child: Container(
+        color: Colors.transparent, // Ensures hit test works
+        child: Row(
+          children: [
+            Container(
+              width: 42,
+              height: 42,
+              alignment: Alignment.center,
+              decoration: BoxDecoration(
+                color: isDestructive
+                    ? Colors.red.withOpacity(0.1)
+                    : const Color(0xFF8A5CF6).withOpacity(0.1),
+                shape: BoxShape.circle,
+              ),
+              child: Icon(
+                icon,
+                color: isDestructive ? Colors.red : const Color(0xFF8A5CF6),
+                size: 25,
+              ),
+            ),
+            const SizedBox(width: 15),
+            Expanded(
+              child: Text(
+                title,
+                style: const TextStyle(
+                  fontSize: 16,
+                  fontWeight: FontWeight.w600,
+                  color: Colors.black87,
+                ),
+              ),
+            ),
+            const Icon(
+              Icons.arrow_forward_ios,
+              size: 16,
+              color: Colors.black26,
+            ),
+          ],
         ),
-        const Padding(
-          padding: EdgeInsets.symmetric(horizontal: 20),
-          child: Divider(height: 1),
-        ),
-      ],
+      ),
+    );
+  }
+}
+
+class _ScaleButton extends StatefulWidget {
+  final VoidCallback onTap;
+  final Widget child;
+
+  const _ScaleButton({required this.onTap, required this.child});
+
+  @override
+  State<_ScaleButton> createState() => _ScaleButtonState();
+}
+
+class _ScaleButtonState extends State<_ScaleButton>
+    with SingleTickerProviderStateMixin {
+  late AnimationController _controller;
+  late Animation<double> _scaleAnimation;
+
+  @override
+  void initState() {
+    super.initState();
+    _controller = AnimationController(
+      vsync: this,
+      duration: const Duration(milliseconds: 100),
+    );
+    _scaleAnimation = Tween<double>(
+      begin: 1.0,
+      end: 0.95,
+    ).animate(CurvedAnimation(parent: _controller, curve: Curves.easeInOut));
+  }
+
+  @override
+  void dispose() {
+    _controller.dispose();
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return GestureDetector(
+      onTapDown: (_) => _controller.forward(),
+      onTapUp: (_) {
+        _controller.reverse();
+        widget.onTap();
+      },
+      onTapCancel: () => _controller.reverse(),
+      child: ScaleTransition(scale: _scaleAnimation, child: widget.child),
     );
   }
 }
