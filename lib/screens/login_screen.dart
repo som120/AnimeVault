@@ -87,15 +87,20 @@ class _LoginScreenState extends State<LoginScreen> {
   }
 
   Future<void> _signInWithGoogle() async {
-    try {
-      setState(() => _isLoading = true);
+    setState(() => _isLoading = true);
 
-      final GoogleSignIn googleSignIn = GoogleSignIn();
+    final GoogleSignIn googleSignIn = GoogleSignIn();
+
+    try {
+      // 🔥 (1) Clear stale Google session FIRST
+      await googleSignIn.signOut();
+
+      // 🔐 Start Google Sign-In
       final GoogleSignInAccount? googleUser = await googleSignIn.signIn();
 
       if (googleUser == null) {
-        setState(() => _isLoading = false);
-        return; // user cancelled
+        // User cancelled
+        return;
       }
 
       final GoogleSignInAuthentication googleAuth =
@@ -106,7 +111,11 @@ class _LoginScreenState extends State<LoginScreen> {
         idToken: googleAuth.idToken,
       );
 
+      // 🔐 Firebase Sign-In
       await FirebaseAuth.instance.signInWithCredential(credential);
+
+      // 🔥 (2) Clear pending credential after success
+      _pendingGoogleCredential = null;
 
       _showSnackBar(message: "Signed in with Google", isError: false);
 
@@ -115,17 +124,19 @@ class _LoginScreenState extends State<LoginScreen> {
         MaterialPageRoute(builder: (_) => const MainScreen()),
       );
     } on FirebaseAuthException catch (e) {
-      // 🔥 PREVENT DUPLICATE ACCOUNTS
       if (e.code == 'account-exists-with-different-credential') {
-        _handleAccountLinking(e);
+        await _handleAccountLinking(e);
       } else {
         _showSnackBar(
           message: e.message ?? "Google sign-in failed",
           isError: true,
         );
       }
-    } catch (_) {
-      _showSnackBar(message: "Something went wrong", isError: true);
+    } catch (e) {
+      _showSnackBar(
+        message: "Google sign-in cancelled or interrupted",
+        isError: true,
+      );
     } finally {
       setState(() => _isLoading = false);
     }
