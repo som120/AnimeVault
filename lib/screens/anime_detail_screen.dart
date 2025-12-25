@@ -22,6 +22,7 @@ class AnimeDetailScreen extends StatefulWidget {
 
 class _AnimeDetailScreenState extends State<AnimeDetailScreen>
     with TickerProviderStateMixin {
+  static const double _tabHeight = 40.0;
   final ScrollController _scrollController = ScrollController();
   bool isDarkStatusBar = true; // banner visible at start
   bool isLoading = false;
@@ -33,6 +34,7 @@ class _AnimeDetailScreenState extends State<AnimeDetailScreen>
   late AnimationController _dotAnimationController;
   Timer? _countdownTimer;
   StreamSubscription<List<ConnectivityResult>>? _connectivitySubscription;
+  bool _isSubscribedToEpisode = false;
 
   @override
   void initState() {
@@ -644,7 +646,9 @@ class _AnimeDetailScreenState extends State<AnimeDetailScreen>
                   decoration: BoxDecoration(
                     color: AppTheme.primary.withOpacity(0.1),
                     borderRadius: BorderRadius.circular(20),
-                    border: Border.all(color: AppTheme.primary),
+                    border: Border.all(
+                      color: AppTheme.primary.withOpacity(0.05),
+                    ),
                   ),
                   child: Text(
                     genre,
@@ -773,22 +777,52 @@ class _AnimeDetailScreenState extends State<AnimeDetailScreen>
     return RepaintBoundary(
       child: Column(
         children: [
-          // Tab Buttons
+          // Tab Buttons (SLIDING INDICATOR)
           Container(
             margin: const EdgeInsets.symmetric(horizontal: 20),
-            padding: const EdgeInsets.all(4),
+            padding: const EdgeInsets.all(6),
             decoration: BoxDecoration(
               color: Colors.grey.shade200,
-              borderRadius: BorderRadius.circular(25),
+              borderRadius: BorderRadius.circular(35),
+              border: Border.all(color: Colors.grey.shade300),
             ),
-            child: Row(
+            child: Stack(
+              alignment: Alignment.center, // ⭐ important
               children: [
-                _buildTabButton("Information", 0),
-                _buildTabButton("Characters", 1),
-                _buildTabButton("Relations", 2),
+                // 🔵 Sliding pill
+                AnimatedAlign(
+                  duration: const Duration(milliseconds: 320),
+                  curve: Curves.easeOutCubic,
+                  alignment: _tabAlignment(),
+                  child: Container(
+                    height: _tabHeight,
+                    width: (MediaQuery.of(context).size.width - 40 - 12) / 3,
+                    decoration: BoxDecoration(
+                      color: Colors.white,
+                      borderRadius: BorderRadius.circular(30),
+                      boxShadow: [
+                        BoxShadow(
+                          color: Colors.black.withOpacity(0.15),
+                          blurRadius: 10,
+                          offset: const Offset(0, 4),
+                        ),
+                      ],
+                    ),
+                  ),
+                ),
+
+                // 🟣 Buttons row
+                Row(
+                  children: [
+                    _buildTabButton("Information", 0),
+                    _buildTabButton("Characters", 1),
+                    _buildTabButton("Relations", 2),
+                  ],
+                ),
               ],
             ),
           ),
+
           const SizedBox(height: 20),
 
           // Tab Content - Enhanced morphing animation
@@ -855,36 +889,44 @@ class _AnimeDetailScreenState extends State<AnimeDetailScreen>
 
   Widget _buildTabButton(String label, int index) {
     final isSelected = selectedTab == index;
+
     return Expanded(
       child: GestureDetector(
+        behavior: HitTestBehavior.opaque,
         onTap: () => setState(() => selectedTab = index),
-        child: Container(
-          padding: const EdgeInsets.symmetric(vertical: 10),
-          decoration: BoxDecoration(
-            color: isSelected ? Colors.white : Colors.transparent,
-            borderRadius: BorderRadius.circular(20),
-            boxShadow: isSelected
-                ? [
-                    BoxShadow(
-                      color: Colors.black.withOpacity(0.4),
-                      blurRadius: 4,
-                      offset: const Offset(0, 2),
-                    ),
-                  ]
-                : null,
-          ),
-          child: Text(
-            label,
-            textAlign: TextAlign.center,
-            style: TextStyle(
-              fontSize: 13,
-              fontWeight: FontWeight.bold,
-              color: isSelected ? AppTheme.primary : Colors.grey.shade600,
+        child: SizedBox(
+          height: _tabHeight, // ⭐ same as pill
+          child: Center(
+            child: Padding(
+              padding: const EdgeInsets.symmetric(horizontal: 8),
+              child: AnimatedDefaultTextStyle(
+                duration: const Duration(milliseconds: 200),
+                curve: Curves.easeOut,
+                style: TextStyle(
+                  fontSize: 13,
+                  fontWeight: FontWeight.bold,
+                  color: isSelected ? AppTheme.primary : Colors.grey.shade600,
+                ),
+                child: Text(label, textAlign: TextAlign.center),
+              ),
             ),
           ),
         ),
       ),
     );
+  }
+
+  Alignment _tabAlignment() {
+    switch (selectedTab) {
+      case 0:
+        return Alignment.centerLeft;
+      case 1:
+        return Alignment.center;
+      case 2:
+        return Alignment.centerRight;
+      default:
+        return Alignment.centerLeft;
+    }
   }
 
   Widget _buildTabContent(Map<String, dynamic> anime) {
@@ -1628,6 +1670,7 @@ class _AnimeDetailScreenState extends State<AnimeDetailScreen>
                 children: [
                   buildTopSection(context, widget.anime),
                   buildStatsCard(widget.anime),
+                  const SizedBox(height: 12),
                   _buildNextEpisodeWidget(widget.anime),
                   buildGenres(widget.anime),
                   buildDescription(widget.anime),
@@ -1635,7 +1678,7 @@ class _AnimeDetailScreenState extends State<AnimeDetailScreen>
                   buildTabsContainer(widget.anime),
                   _buildStreamingSites(widget.anime),
                   buildRecommendations(widget.anime),
-                  const SizedBox(height: 30), // Bottom padding
+                  const SizedBox(height: 100), // Bottom padding
                 ],
               ),
             ),
@@ -1666,8 +1709,7 @@ class _AnimeDetailScreenState extends State<AnimeDetailScreen>
     final nextEp = anime['nextAiringEpisode'];
     final airingAt = nextEp['airingAt'] as int;
     final firingDate = DateTime.fromMillisecondsSinceEpoch(airingAt * 1000);
-    final now = DateTime.now();
-    final diff = firingDate.difference(now);
+    final diff = firingDate.difference(DateTime.now());
 
     if (diff.isNegative) return const SizedBox.shrink();
 
@@ -1676,39 +1718,91 @@ class _AnimeDetailScreenState extends State<AnimeDetailScreen>
     final minutes = diff.inMinutes % 60;
 
     return Container(
-      margin: const EdgeInsets.fromLTRB(20, 0, 20, 20),
-      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+      margin: const EdgeInsets.fromLTRB(20, 0, 20, 16),
+      padding: const EdgeInsets.symmetric(horizontal: 30, vertical: 14),
       decoration: BoxDecoration(
         color: AppTheme.primary.withOpacity(0.1),
-        borderRadius: BorderRadius.circular(16),
-        border: Border.all(color: AppTheme.primary.withOpacity(0.3)),
+        borderRadius: BorderRadius.circular(18),
+        border: Border.all(color: AppTheme.primary.withOpacity(0.05)),
       ),
       child: Row(
-        mainAxisSize: MainAxisSize.min,
         children: [
-          Icon(Icons.timer_rounded, color: AppTheme.primary),
-          const SizedBox(width: 12),
-          Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
+          // LEFT: timer + text
+          Row(
             children: [
+              Icon(Icons.timer_rounded, color: AppTheme.primary, size: 22),
+              const SizedBox(width: 10),
               Text(
                 "Ep ${nextEp['episode']} Airing In",
                 style: TextStyle(
-                  fontSize: 12,
-                  color: AppTheme.primary.withOpacity(0.8),
-                  fontWeight: FontWeight.bold,
+                  fontSize: 13,
+                  color: AppTheme.primary.withOpacity(0.85),
+                  fontWeight: FontWeight.w600,
                 ),
               ),
-              const SizedBox(height: 2),
+              const SizedBox(width: 8),
               Text(
                 "${days}d ${hours}h ${minutes}m",
                 style: TextStyle(
-                  fontSize: 16,
+                  fontSize: 15,
                   color: AppTheme.primary,
                   fontWeight: FontWeight.bold,
                 ),
               ),
             ],
+          ),
+
+          const Spacer(),
+
+          // RIGHT: bell
+          GestureDetector(
+            onTap: () {
+              HapticFeedback.lightImpact();
+              setState(() {
+                _isSubscribedToEpisode = !_isSubscribedToEpisode;
+              });
+
+              ScaffoldMessenger.of(context).showSnackBar(
+                SnackBar(
+                  behavior: SnackBarBehavior.floating,
+                  margin: const EdgeInsets.symmetric(
+                    horizontal: 50,
+                    vertical: 16,
+                  ),
+                  backgroundColor: AppTheme.accent,
+                  shape: RoundedRectangleBorder(
+                    borderRadius: BorderRadius.circular(25),
+                  ),
+                  content: Text(
+                    _isSubscribedToEpisode
+                        ? "Episode notifications enabled"
+                        : "Episode notifications disabled",
+                    textAlign: TextAlign.center,
+                    style: const TextStyle(
+                      fontSize: 15,
+                      fontWeight: FontWeight.w600,
+                    ),
+                  ),
+                  duration: const Duration(seconds: 2),
+                ),
+              );
+            },
+            child: AnimatedSwitcher(
+              duration: const Duration(milliseconds: 250),
+              transitionBuilder: (child, animation) {
+                return ScaleTransition(scale: animation, child: child);
+              },
+              child: Icon(
+                _isSubscribedToEpisode
+                    ? Icons.notifications_active_rounded
+                    : Icons.notifications_none_rounded,
+                key: ValueKey(_isSubscribedToEpisode),
+                color: _isSubscribedToEpisode
+                    ? AppTheme.primary
+                    : Colors.grey.shade500,
+                size: 24,
+              ),
+            ),
           ),
         ],
       ),
