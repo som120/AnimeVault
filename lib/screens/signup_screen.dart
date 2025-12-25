@@ -1,6 +1,7 @@
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/material.dart';
 import 'package:ainme_vault/theme/app_theme.dart';
+import 'package:flutter/services.dart';
 
 class SignupScreen extends StatefulWidget {
   const SignupScreen({super.key});
@@ -347,13 +348,17 @@ class _SignupScreenState extends State<SignupScreen> {
                             _buildSocialButton(
                               label: "Google",
                               image: "assets/Google__G__logo.png",
-                              onTap: () {},
+                              onTap: () {
+                                HapticFeedback.lightImpact();
+                              },
                             ),
                             const SizedBox(width: 20),
                             _buildSocialButton(
                               label: "Apple",
                               image: "assets/Apple_logo_black.png",
-                              onTap: () {},
+                              onTap: () {
+                                HapticFeedback.lightImpact();
+                              },
                             ),
                           ],
                         ),
