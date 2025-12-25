@@ -4,6 +4,8 @@ import 'package:flutter/material.dart';
 import 'package:ainme_vault/theme/app_theme.dart';
 import 'package:ainme_vault/screens/signup_screen.dart';
 import 'package:firebase_auth/firebase_auth.dart';
+import 'package:google_sign_in/google_sign_in.dart';
+import 'package:flutter/services.dart';
 
 class LoginScreen extends StatefulWidget {
   const LoginScreen({super.key});
@@ -19,6 +21,7 @@ class _LoginScreenState extends State<LoginScreen> {
   bool _isLoading = false;
   bool _obscurePassword = true;
   bool _submitted = false;
+  AuthCredential? _pendingGoogleCredential;
 
   @override
   void dispose() {
@@ -43,6 +46,12 @@ class _LoginScreenState extends State<LoginScreen> {
       );
 
       final user = FirebaseAuth.instance.currentUser;
+
+      // 🔗 LINK GOOGLE CREDENTIAL IF IT EXISTS
+      if (_pendingGoogleCredential != null && user != null) {
+        await user.linkWithCredential(_pendingGoogleCredential!);
+        _pendingGoogleCredential = null;
+      }
 
       if (user != null && !user.emailVerified) {
         await FirebaseAuth.instance.signOut();
@@ -75,6 +84,70 @@ class _LoginScreenState extends State<LoginScreen> {
     } finally {
       setState(() => _isLoading = false);
     }
+  }
+
+  Future<void> _signInWithGoogle() async {
+    try {
+      setState(() => _isLoading = true);
+
+      final GoogleSignIn googleSignIn = GoogleSignIn();
+      final GoogleSignInAccount? googleUser = await googleSignIn.signIn();
+
+      if (googleUser == null) {
+        setState(() => _isLoading = false);
+        return; // user cancelled
+      }
+
+      final GoogleSignInAuthentication googleAuth =
+          await googleUser.authentication;
+
+      final credential = GoogleAuthProvider.credential(
+        accessToken: googleAuth.accessToken,
+        idToken: googleAuth.idToken,
+      );
+
+      await FirebaseAuth.instance.signInWithCredential(credential);
+
+      _showSnackBar(message: "Signed in with Google", isError: false);
+
+      Navigator.pushReplacement(
+        context,
+        MaterialPageRoute(builder: (_) => const MainScreen()),
+      );
+    } on FirebaseAuthException catch (e) {
+      // 🔥 PREVENT DUPLICATE ACCOUNTS
+      if (e.code == 'account-exists-with-different-credential') {
+        _handleAccountLinking(e);
+      } else {
+        _showSnackBar(
+          message: e.message ?? "Google sign-in failed",
+          isError: true,
+        );
+      }
+    } catch (_) {
+      _showSnackBar(message: "Something went wrong", isError: true);
+    } finally {
+      setState(() => _isLoading = false);
+    }
+  }
+
+  Future<void> _handleAccountLinking(FirebaseAuthException e) async {
+    final email = e.email;
+    final pendingCredential = e.credential;
+
+    if (email == null || pendingCredential == null) return;
+
+    // Store Google credential temporarily
+    _pendingGoogleCredential = pendingCredential;
+
+    // Ask user to login manually with email/password
+    _showSnackBar(
+      message: "This email is already registered. Login to link Google.",
+      isError: true,
+    );
+
+    // Autofill email for convenience
+    _emailController.text = email;
   }
 
   void _showSnackBar({required String message, required bool isError}) {
@@ -318,13 +391,19 @@ class _LoginScreenState extends State<LoginScreen> {
                             _buildSocialButton(
                               label: "Google",
                               image: "assets/Google__G__logo.png",
-                              onTap: () {},
+                              onTap: _isLoading
+                                  ? () {
+                                      HapticFeedback.lightImpact();
+                                    }
+                                  : _signInWithGoogle,
                             ),
                             const SizedBox(width: 20),
                             _buildSocialButton(
                               label: "Apple",
                               image: "assets/Apple_logo_black.png",
-                              onTap: () {},
+                              onTap: () {
+                                HapticFeedback.lightImpact();
+                              },
                             ),
                           ],
                         ),
