@@ -317,15 +317,13 @@ class _LoginScreenState extends State<LoginScreen> {
                           children: [
                             _buildSocialButton(
                               label: "Google",
-                              image:
-                                  "https://upload.wikimedia.org/wikipedia/commons/thumb/c/c1/Google_%22G%22_logo.svg/768px-Google_%22G%22_logo.svg.png",
+                              image: "assets/Google__G__logo.png",
                               onTap: () {},
                             ),
                             const SizedBox(width: 20),
                             _buildSocialButton(
                               label: "Apple",
-                              image:
-                                  "https://upload.wikimedia.org/wikipedia/commons/thumb/f/fa/Apple_logo_black.svg/1667px-Apple_logo_black.svg.png",
+                              image: "assets/Apple_logo_black.png",
                               onTap: () {},
                             ),
                           ],
@@ -485,7 +483,7 @@ class _LoginScreenState extends State<LoginScreen> {
           borderRadius: BorderRadius.circular(16),
         ),
         child: Center(
-          child: Image.network(
+          child: Image.asset(
             image,
             width: 32,
             height: 32,
