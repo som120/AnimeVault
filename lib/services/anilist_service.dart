@@ -173,6 +173,29 @@ class AniListService {
     }
   ''';
 
+  static const String seasonQuery = r'''
+    query ($season: MediaSeason, $seasonYear: Int, $page: Int, $perPage: Int) {
+      Page(page: $page, perPage: $perPage) {
+        media(season: $season, seasonYear: $seasonYear, sort: POPULARITY_DESC, type: ANIME) {
+          id
+          title { romaji english }
+          format
+          genres
+          description(asHtml: false)
+          episodes
+          averageScore
+          popularity
+          favourites
+          rankings { rank type allTime }
+          status
+          bannerImage
+          startDate { year }
+          coverImage { medium large }
+        }
+      }
+    }
+  ''';
+
   static const String mediaDetailQuery = r'''
     query ($id: Int) {
       Media(id: $id) {
@@ -373,6 +396,16 @@ class AniListService {
         pages: 2,
         otherVariables: {'genre': genre.trim()},
       );
+
+  static Future<List<dynamic>> getAnimeBySeason(
+    int year,
+    String season,
+  ) async => _fetchMultiplePages(
+    seasonQuery,
+    perPage: 50,
+    pages: 2,
+    otherVariables: {'season': season, 'seasonYear': year},
+  );
 
   static Future<Map<String, dynamic>?> getCharacterDetails(int id) async {
     final opts = QueryOptions(
