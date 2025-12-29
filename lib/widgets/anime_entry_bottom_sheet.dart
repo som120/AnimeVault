@@ -90,16 +90,6 @@ class _AnimeEntryBottomSheetState extends State<AnimeEntryBottomSheet> {
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
                   // 1. Anime Title (Context)
-                  Text(
-                    widget.anime['title']?['romaji'] ?? "Unknown Title",
-                    style: const TextStyle(
-                      fontSize: 20,
-                      fontWeight: FontWeight.bold,
-                    ),
-                    maxLines: 2,
-                    overflow: TextOverflow.ellipsis,
-                  ),
-                  const SizedBox(height: 24),
 
                   // 2. Status
                   _buildSectionTitle("Status"),
