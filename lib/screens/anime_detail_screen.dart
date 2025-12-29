@@ -394,8 +394,8 @@ class _AnimeDetailScreenState extends State<AnimeDetailScreen>
                             bottom: 4,
                             right: 4,
                             child: Container(
-                              width: 40,
-                              height: 40,
+                              width: 43,
+                              height: 43,
                               decoration: BoxDecoration(
                                 color: AppTheme.primary,
                                 shape: BoxShape.circle,
@@ -425,7 +425,7 @@ class _AnimeDetailScreenState extends State<AnimeDetailScreen>
                                   child: const Icon(
                                     Icons.add,
                                     color: Colors.white,
-                                    size: 24,
+                                    size: 27,
                                   ),
                                 ),
                               ),
