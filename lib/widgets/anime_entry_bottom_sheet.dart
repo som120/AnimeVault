@@ -13,30 +13,32 @@ class AnimeEntryBottomSheet extends StatefulWidget {
 }
 
 class _AnimeEntryBottomSheetState extends State<AnimeEntryBottomSheet> {
-  String _status = "Save"; // Default
+  String _status = "Planning"; // Default
   int _progress = 0;
   int _score = 0;
   DateTime? _startDate;
   DateTime? _finishDate;
   late int _totalEpisodes;
+  bool _hasChanges = false;
+  late bool _isNewEntry;
+  bool get _episodesUnknown => widget.anime['episodes'] == null;
 
-  final List<String> _statuses = ["Watching", "Completed", "Save"];
+  final List<String> _statuses = ["Watching", "Completed", "Planning"];
 
   @override
   void initState() {
     super.initState();
     // Initialize with existing data if available (mocking interaction for now)
     _totalEpisodes = widget.anime['episodes'] ?? 0;
-    if (_totalEpisodes == 0) _totalEpisodes = 12; // Fallback or infinite?
+    // 🔥 TEMP LOGIC (later replace with Firestore check)
+    _isNewEntry = true; //_isNewEntry = existingEntry == null;
   }
 
   @override
   Widget build(BuildContext context) {
-    // Determine max episodes for slider/picker.
-    // If unknown, we might need a different UI, but assuming standard for now.
-    final maxEps = _totalEpisodes > 0
-        ? _totalEpisodes
-        : 100; // Cap at 100 if unknown for UI demo
+    final int maxEps = _episodesUnknown
+        ? 100
+        : (_totalEpisodes > 0 ? _totalEpisodes : 100);
 
     return Container(
       height: MediaQuery.of(context).size.height * 0.75,
@@ -67,17 +69,21 @@ class _AnimeEntryBottomSheetState extends State<AnimeEntryBottomSheet> {
                   ).textTheme.titleLarge?.copyWith(fontSize: 18),
                 ),
                 TextButton(
-                  onPressed: () {
-                    HapticFeedback.lightImpact();
-                    Navigator.pop(context);
-                    // TODO: Save logic
-                  },
-                  child: const Text(
+                  onPressed: (_isNewEntry || _hasChanges)
+                      ? () {
+                          HapticFeedback.lightImpact();
+                          Navigator.pop(context);
+                          // _saveEntry();
+                        }
+                      : null,
+                  child: Text(
                     "Save",
                     style: TextStyle(
                       fontWeight: FontWeight.bold,
                       fontSize: 16,
-                      color: AppTheme.primary,
+                      color: (_isNewEntry || _hasChanges)
+                          ? AppTheme.primary
+                          : Colors.grey,
                     ),
                   ),
                 ),
@@ -105,6 +111,7 @@ class _AnimeEntryBottomSheetState extends State<AnimeEntryBottomSheet> {
                               HapticFeedback.lightImpact();
                               setState(() {
                                 _status = status;
+                                _hasChanges = true;
                                 if (_status == "Completed" &&
                                     _totalEpisodes > 0) {
                                   _progress = _totalEpisodes;
@@ -166,6 +173,17 @@ class _AnimeEntryBottomSheetState extends State<AnimeEntryBottomSheet> {
                       ),
                     ],
                   ),
+                  if (_episodesUnknown)
+                    Padding(
+                      padding: const EdgeInsets.only(top: 6),
+                      child: Text(
+                        "Episode count unknown",
+                        style: TextStyle(
+                          fontSize: 12,
+                          color: Colors.grey.shade500,
+                        ),
+                      ),
+                    ),
                   const SizedBox(height: 16),
 
                   SizedBox(
@@ -186,6 +204,7 @@ class _AnimeEntryBottomSheetState extends State<AnimeEntryBottomSheet> {
                           onTap: () {
                             setState(() {
                               _progress = index;
+                              _hasChanges = true;
                               // Auto-update status logic
                               if (_progress == _totalEpisodes &&
                                   _totalEpisodes > 0) {
@@ -340,11 +359,36 @@ class _AnimeEntryBottomSheetState extends State<AnimeEntryBottomSheet> {
                   SizedBox(
                     width: double.infinity,
                     child: TextButton.icon(
-                      onPressed: () {
+                      onPressed: () async {
                         HapticFeedback.lightImpact();
-                        // TODO: Implement remove logic
-                        Navigator.pop(context);
+                        final confirmed = await showDialog<bool>(
+                          context: context,
+                          builder: (_) => AlertDialog(
+                            title: const Text("Remove anime?"),
+                            content: const Text(
+                              "This will remove it from your list.",
+                            ),
+                            actions: [
+                              TextButton(
+                                onPressed: () => Navigator.pop(context, false),
+                                child: const Text("Cancel"),
+                              ),
+                              TextButton(
+                                onPressed: () => Navigator.pop(context, true),
+                                child: const Text("Remove"),
+                                style: TextButton.styleFrom(
+                                  foregroundColor: Colors.redAccent,
+                                ),
+                              ),
+                            ],
+                          ),
+                        );
+
+                        if (confirmed == true) {
+                          // remove logic
+                        }
                       },
+
                       style: TextButton.styleFrom(
                         foregroundColor: Colors.redAccent,
                         padding: const EdgeInsets.symmetric(vertical: 16),
@@ -411,7 +455,24 @@ class _AnimeEntryBottomSheetState extends State<AnimeEntryBottomSheet> {
             );
           },
         );
-        if (picked != null) onSelect(picked);
+        if (picked != null) {
+          if (label == "Finish Date") {
+            setState(() {
+              _finishDate = picked;
+              _status = "Completed";
+              _hasChanges = true;
+
+              if (!_episodesUnknown && _totalEpisodes > 0) {
+                _progress = _totalEpisodes;
+              }
+            });
+          } else {
+            setState(() {
+              _startDate = picked;
+              _hasChanges = true;
+            });
+          }
+        }
       },
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
