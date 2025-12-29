@@ -10,6 +10,7 @@ import 'package:cached_network_image/cached_network_image.dart';
 import 'package:ainme_vault/screens/search_screen.dart';
 import 'package:ainme_vault/utils/light_skeleton.dart';
 import 'package:connectivity_plus/connectivity_plus.dart';
+import 'package:ainme_vault/widgets/anime_entry_bottom_sheet.dart';
 
 class AnimeDetailScreen extends StatefulWidget {
   final Map<String, dynamic> anime;
@@ -169,225 +170,276 @@ class _AnimeDetailScreenState extends State<AnimeDetailScreen>
 
     return Column(
       children: [
-        Stack(
-          clipBehavior: Clip.none,
-          children: [
-            // 🌈 BANNER
-            RepaintBoundary(
-              child: ClipRRect(
-                borderRadius: const BorderRadius.only(
-                  bottomLeft: Radius.circular(30),
-                  bottomRight: Radius.circular(30),
-                ),
-                child: SizedBox(
-                  height: 260,
-                  width: double.infinity,
-                  child: AnimatedBuilder(
-                    animation: _bannerAnimation,
-                    builder: (context, child) {
-                      return Transform.scale(
-                        scale: _bannerAnimation.value,
-                        child: child,
-                      );
-                    },
-                    child: Stack(
-                      fit: StackFit.expand,
-                      children: [
-                        CachedNetworkImage(
-                          imageUrl: banner,
-                          fit: BoxFit.cover,
-                          placeholder: (context, url) => LightSkeleton(
-                            width: double.infinity,
-                            height: 260,
-                            borderRadius: const BorderRadius.only(
-                              bottomLeft: Radius.circular(30),
-                              bottomRight: Radius.circular(30),
+        // Container Stacking Header & Poster
+        SizedBox(
+          height: 440, // 260 (Banner) + 180 (Overlap space)
+          child: Stack(
+            fit: StackFit.expand,
+            clipBehavior: Clip.none,
+            children: [
+              // 1. Banner Background (Top 260)
+              Positioned(
+                top: 0,
+                left: 0,
+                right: 0,
+                height: 260,
+                child: RepaintBoundary(
+                  child: ClipRRect(
+                    borderRadius: const BorderRadius.only(
+                      bottomLeft: Radius.circular(30),
+                      bottomRight: Radius.circular(30),
+                    ),
+                    child: AnimatedBuilder(
+                      animation: _bannerAnimation,
+                      builder: (context, child) {
+                        return Transform.scale(
+                          scale: _bannerAnimation.value,
+                          child: child,
+                        );
+                      },
+                      child: Stack(
+                        fit: StackFit.expand,
+                        children: [
+                          CachedNetworkImage(
+                            imageUrl: banner,
+                            fit: BoxFit.cover,
+                            placeholder: (context, url) => LightSkeleton(
+                              width: double.infinity,
+                              height: 260,
+                              borderRadius: const BorderRadius.only(
+                                bottomLeft: Radius.circular(30),
+                                bottomRight: Radius.circular(30),
+                              ),
                             ),
-                          ),
-                          errorWidget: (context, url, error) => Container(
-                            color: Colors.grey[900],
-                            child: const Center(
-                              child: Icon(
-                                Icons.image_not_supported_rounded,
-                                color: Colors.white24,
-                                size: 50,
+                            errorWidget: (context, url, error) => Container(
+                              color: Colors.grey[900],
+                              child: const Center(
+                                child: Icon(
+                                  Icons.image_not_supported_rounded,
+                                  color: Colors.white24,
+                                  size: 50,
+                                ),
                               ),
                             ),
                           ),
-                        ),
-                        Container(
-                          decoration: BoxDecoration(
-                            gradient: LinearGradient(
-                              begin: Alignment.topCenter,
-                              end: Alignment.bottomCenter,
-                              colors: [
-                                Colors.black.withOpacity(0.3),
-                                Colors.black.withOpacity(0.7),
-                              ],
-                              stops: const [0.0, 1.0],
+                          Container(
+                            decoration: BoxDecoration(
+                              gradient: LinearGradient(
+                                begin: Alignment.topCenter,
+                                end: Alignment.bottomCenter,
+                                colors: [
+                                  Colors.black.withOpacity(0.3),
+                                  Colors.black.withOpacity(0.7),
+                                ],
+                                stops: const [0.0, 1.0],
+                              ),
                             ),
                           ),
-                        ),
-                      ],
+                        ],
+                      ),
                     ),
                   ),
                 ),
               ),
-            ),
 
-            // ⭐ POSTER OVERLAP
-            Positioned(
-              bottom: -170,
-              left: 0,
-              right: 0,
-              child: Center(
-                child: RepaintBoundary(
-                  child: Container(
-                    width: 210,
-                    height: 300,
-                    decoration: BoxDecoration(
-                      borderRadius: BorderRadius.circular(16),
-                      boxShadow: [
-                        BoxShadow(
-                          color: Colors.black.withOpacity(0.25),
-                          blurRadius: 20,
-                          offset: const Offset(0, 10),
-                        ),
-                      ],
-                    ),
-                    child: Stack(
-                      clipBehavior: Clip.none,
-                      children: [
-                        ClipRRect(
-                          borderRadius: BorderRadius.circular(16),
-                          child: CachedNetworkImage(
-                            imageUrl: poster,
-                            height: 300,
-                            width: 210,
-                            fit: BoxFit.cover,
-                            memCacheWidth: 420,
-                            memCacheHeight: 600,
-                            placeholder: (context, url) => LightSkeleton(
-                              width: 210,
+              // 2. Center Poster (Positioned absolute)
+              // Banner ends at 260. Poster Height 300.
+              // Space below banner is 180. Total height 440.
+              // We want poster bottom to be at ~430 (10px padding from bottom of 440)??
+              // Previous: bottom: -170 relative to 260 stack. => 260+170 = 430.
+              // So Poster bottom is at 430.
+              // Poster Top = 430 - 300 = 130.
+              Positioned(
+                top: 130,
+                left: 0,
+                right: 0,
+                child: Center(
+                  child: RepaintBoundary(
+                    child: Container(
+                      width: 210,
+                      height: 300,
+                      decoration: BoxDecoration(
+                        borderRadius: BorderRadius.circular(16),
+                        boxShadow: [
+                          BoxShadow(
+                            color: Colors.black.withOpacity(0.25),
+                            blurRadius: 20,
+                            offset: const Offset(0, 10),
+                          ),
+                        ],
+                      ),
+                      child: Stack(
+                        clipBehavior: Clip.none,
+                        children: [
+                          ClipRRect(
+                            borderRadius: BorderRadius.circular(16),
+                            child: CachedNetworkImage(
+                              imageUrl: poster,
                               height: 300,
-                              borderRadius: BorderRadius.circular(16),
-                            ),
-                            errorWidget: (context, url, error) => Container(
-                              color: Colors.grey[200],
-                              child: Column(
-                                mainAxisAlignment: MainAxisAlignment.center,
-                                children: [
-                                  Icon(
-                                    Icons.broken_image_rounded,
-                                    color: Colors.grey[400],
-                                    size: 40,
-                                  ),
-                                  const SizedBox(height: 8),
-                                  Text(
-                                    "No Image",
-                                    style: TextStyle(
-                                      color: Colors.grey[500],
-                                      fontSize: 12,
-                                      fontWeight: FontWeight.w500,
+                              width: 210,
+                              fit: BoxFit.cover,
+                              memCacheWidth: 420,
+                              memCacheHeight: 600,
+                              placeholder: (context, url) => LightSkeleton(
+                                width: 210,
+                                height: 300,
+                                borderRadius: BorderRadius.circular(16),
+                              ),
+                              errorWidget: (context, url, error) => Container(
+                                color: Colors.grey[200],
+                                child: Column(
+                                  mainAxisAlignment: MainAxisAlignment.center,
+                                  children: [
+                                    Icon(
+                                      Icons.broken_image_rounded,
+                                      color: Colors.grey[400],
+                                      size: 40,
                                     ),
-                                  ),
-                                ],
+                                    const SizedBox(height: 8),
+                                    Text(
+                                      "No Image",
+                                      style: TextStyle(
+                                        color: Colors.grey[500],
+                                        fontSize: 12,
+                                        fontWeight: FontWeight.w500,
+                                      ),
+                                    ),
+                                  ],
+                                ),
                               ),
                             ),
                           ),
-                        ),
-                        // Green pulsing dot for airing anime (bottom right)
-                        if (widget.anime['status'] == 'RELEASING')
-                          Positioned(
-                            bottom: 4,
-                            left: 4,
-                            child: RepaintBoundary(
-                              child: AnimatedBuilder(
-                                animation: _dotAnimationController,
-                                builder: (context, child) {
-                                  final value = _dotAnimationController.value;
-                                  // Create a second staggered wave
-                                  final value2 = (value >= 0.5)
-                                      ? value - 0.5
-                                      : value + 0.5;
+                          // Green pulsing dot for airing anime (bottom right)
+                          if (widget.anime['status'] == 'RELEASING')
+                            Positioned(
+                              bottom: 4,
+                              left: 4,
+                              child: RepaintBoundary(
+                                child: AnimatedBuilder(
+                                  animation: _dotAnimationController,
+                                  builder: (context, child) {
+                                    final value = _dotAnimationController.value;
+                                    // Create a second staggered wave
+                                    final value2 = (value >= 0.5)
+                                        ? value - 0.5
+                                        : value + 0.5;
 
-                                  return SizedBox(
-                                    width: 32,
-                                    height: 32,
-                                    child: Stack(
-                                      alignment: Alignment.center,
-                                      children: [
-                                        // First Ripple Ring
-                                        if (value < 0.95)
-                                          Container(
-                                            width: 12 + (value * 20),
-                                            height: 12 + (value * 20),
-                                            decoration: BoxDecoration(
-                                              shape: BoxShape.circle,
-                                              border: Border.all(
-                                                color: Color.fromRGBO(
-                                                  105,
-                                                  240,
-                                                  174,
-                                                  (1.0 - value) * 0.8,
+                                    return SizedBox(
+                                      width: 32,
+                                      height: 32,
+                                      child: Stack(
+                                        alignment: Alignment.center,
+                                        children: [
+                                          // First Ripple Ring
+                                          if (value < 0.95)
+                                            Container(
+                                              width: 12 + (value * 20),
+                                              height: 12 + (value * 20),
+                                              decoration: BoxDecoration(
+                                                shape: BoxShape.circle,
+                                                border: Border.all(
+                                                  color: Color.fromRGBO(
+                                                    105,
+                                                    240,
+                                                    174,
+                                                    (1.0 - value) * 0.8,
+                                                  ),
+                                                  width: 1.5,
                                                 ),
-                                                width: 1.5,
                                               ),
                                             ),
-                                          ),
-                                        // Second Ripple Ring (Staggered)
-                                        if (value2 < 0.95)
-                                          Container(
-                                            width: 12 + (value2 * 20),
-                                            height: 12 + (value2 * 20),
-                                            decoration: BoxDecoration(
-                                              shape: BoxShape.circle,
-                                              border: Border.all(
-                                                color: Color.fromRGBO(
-                                                  105,
-                                                  240,
-                                                  174,
-                                                  (1.0 - value2) * 0.8,
+                                          // Second Ripple Ring (Staggered)
+                                          if (value2 < 0.95)
+                                            Container(
+                                              width: 12 + (value2 * 20),
+                                              height: 12 + (value2 * 20),
+                                              decoration: BoxDecoration(
+                                                shape: BoxShape.circle,
+                                                border: Border.all(
+                                                  color: Color.fromRGBO(
+                                                    105,
+                                                    240,
+                                                    174,
+                                                    (1.0 - value2) * 0.8,
+                                                  ),
+                                                  width: 1.5,
                                                 ),
-                                                width: 1.5,
                                               ),
                                             ),
-                                          ),
-                                        // Center Dot (const child)
-                                        child!,
+                                          // Center Dot (const child)
+                                          child!,
+                                        ],
+                                      ),
+                                    );
+                                  },
+                                  child: Container(
+                                    width: 12,
+                                    height: 12,
+                                    decoration: BoxDecoration(
+                                      color: const Color(0xFF69F0AE),
+                                      shape: BoxShape.circle,
+                                      boxShadow: const [
+                                        BoxShadow(
+                                          color: Color(0x9969F0AE),
+                                          blurRadius: 6,
+                                          spreadRadius: 1,
+                                        ),
                                       ],
                                     ),
-                                  );
-                                },
-                                child: Container(
-                                  width: 12,
-                                  height: 12,
-                                  decoration: BoxDecoration(
-                                    color: const Color(0xFF69F0AE),
-                                    shape: BoxShape.circle,
-                                    boxShadow: const [
-                                      BoxShadow(
-                                        color: Color(0x9969F0AE),
-                                        blurRadius: 6,
-                                        spreadRadius: 1,
-                                      ),
-                                    ],
+                                  ),
+                                ),
+                              ),
+                            ),
+                          Positioned(
+                            bottom: 4,
+                            right: 4,
+                            child: Container(
+                              width: 40,
+                              height: 40,
+                              decoration: BoxDecoration(
+                                color: AppTheme.primary,
+                                shape: BoxShape.circle,
+                                boxShadow: const [
+                                  BoxShadow(
+                                    color: Colors.black26,
+                                    blurRadius: 4,
+                                    offset: Offset(0, 2),
+                                  ),
+                                ],
+                              ),
+                              child: Material(
+                                color: Colors.transparent,
+                                child: InkWell(
+                                  onTap: () {
+                                    showModalBottomSheet(
+                                      context: context,
+                                      isScrollControlled: true,
+                                      backgroundColor: Colors.transparent,
+                                      builder: (context) =>
+                                          AnimeEntryBottomSheet(
+                                            anime: widget.anime,
+                                          ),
+                                    );
+                                  },
+                                  borderRadius: BorderRadius.circular(20),
+                                  child: const Icon(
+                                    Icons.add,
+                                    color: Colors.white,
+                                    size: 24,
                                   ),
                                 ),
                               ),
                             ),
                           ),
-                      ],
+                        ],
+                      ),
                     ),
                   ),
                 ),
               ),
-            ),
-          ],
+            ],
+          ),
         ),
-
-        // Space for the poster overlap
-        const SizedBox(height: 180),
 
         // ⭐ TITLE
         Padding(

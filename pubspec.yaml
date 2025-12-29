@@ -50,6 +50,7 @@ dependencies:
   flutter_displaymode: ^0.7.0
   cached_network_image: ^3.4.1
   connectivity_plus: ^6.1.5
+  intl: ^0.20.2
 
 dev_dependencies:
   flutter_test:
