@@ -20,6 +20,7 @@ class _AnimeEntryBottomSheetState extends State<AnimeEntryBottomSheet> {
   DateTime? _finishDate;
   late int _totalEpisodes;
   bool _hasChanges = false;
+  late bool _isNewEntry;
   bool get _episodesUnknown => widget.anime['episodes'] == null;
 
   final List<String> _statuses = ["Watching", "Completed", "Planning"];
@@ -29,6 +30,8 @@ class _AnimeEntryBottomSheetState extends State<AnimeEntryBottomSheet> {
     super.initState();
     // Initialize with existing data if available (mocking interaction for now)
     _totalEpisodes = widget.anime['episodes'] ?? 0;
+    // 🔥 TEMP LOGIC (later replace with Firestore check)
+    _isNewEntry = true; //_isNewEntry = existingEntry == null;
   }
 
   @override
@@ -66,11 +69,11 @@ class _AnimeEntryBottomSheetState extends State<AnimeEntryBottomSheet> {
                   ).textTheme.titleLarge?.copyWith(fontSize: 18),
                 ),
                 TextButton(
-                  onPressed: _hasChanges
+                  onPressed: (_isNewEntry || _hasChanges)
                       ? () {
                           HapticFeedback.lightImpact();
                           Navigator.pop(context);
-                          // _saveEntry(); ← later
+                          // _saveEntry();
                         }
                       : null,
                   child: Text(
@@ -78,7 +81,9 @@ class _AnimeEntryBottomSheetState extends State<AnimeEntryBottomSheet> {
                     style: TextStyle(
                       fontWeight: FontWeight.bold,
                       fontSize: 16,
-                      color: _hasChanges ? AppTheme.primary : Colors.grey,
+                      color: (_isNewEntry || _hasChanges)
+                          ? AppTheme.primary
+                          : Colors.grey,
                     ),
                   ),
                 ),
