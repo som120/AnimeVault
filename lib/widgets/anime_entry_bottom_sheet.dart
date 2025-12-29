@@ -1,5 +1,6 @@
 import 'package:ainme_vault/theme/app_theme.dart';
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:intl/intl.dart';
 
 class AnimeEntryBottomSheet extends StatefulWidget {
@@ -38,7 +39,7 @@ class _AnimeEntryBottomSheetState extends State<AnimeEntryBottomSheet> {
         : 100; // Cap at 100 if unknown for UI demo
 
     return Container(
-      height: MediaQuery.of(context).size.height * 0.85,
+      height: MediaQuery.of(context).size.height * 0.75,
       decoration: const BoxDecoration(
         color: Colors.white,
         borderRadius: BorderRadius.only(
@@ -67,6 +68,7 @@ class _AnimeEntryBottomSheetState extends State<AnimeEntryBottomSheet> {
                 ),
                 TextButton(
                   onPressed: () {
+                    HapticFeedback.lightImpact();
                     Navigator.pop(context);
                     // TODO: Save logic
                   },
@@ -89,8 +91,6 @@ class _AnimeEntryBottomSheetState extends State<AnimeEntryBottomSheet> {
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  // 1. Anime Title (Context)
-
                   // 2. Status
                   _buildSectionTitle("Status"),
                   const SizedBox(height: 12),
@@ -102,6 +102,7 @@ class _AnimeEntryBottomSheetState extends State<AnimeEntryBottomSheet> {
                           padding: const EdgeInsets.symmetric(horizontal: 4.0),
                           child: GestureDetector(
                             onTap: () {
+                              HapticFeedback.lightImpact();
                               setState(() {
                                 _status = status;
                                 if (_status == "Completed" &&
@@ -149,7 +150,7 @@ class _AnimeEntryBottomSheetState extends State<AnimeEntryBottomSheet> {
                     }).toList(),
                   ),
 
-                  const SizedBox(height: 32),
+                  const SizedBox(height: 20),
 
                   // 3. Progress (Sliding Horizontal)
                   Row(
@@ -229,7 +230,7 @@ class _AnimeEntryBottomSheetState extends State<AnimeEntryBottomSheet> {
                     ),
                   ),
 
-                  const SizedBox(height: 32),
+                  const SizedBox(height: 20),
 
                   // 4. Rating (0-10)
                   Row(
@@ -310,7 +311,7 @@ class _AnimeEntryBottomSheetState extends State<AnimeEntryBottomSheet> {
                     ),
                   ),
 
-                  const SizedBox(height: 32),
+                  const SizedBox(height: 20),
 
                   // 5. Date Selectors
                   Row(
@@ -333,13 +334,14 @@ class _AnimeEntryBottomSheetState extends State<AnimeEntryBottomSheet> {
                     ],
                   ),
 
-                  const SizedBox(height: 40),
+                  const SizedBox(height: 30),
 
                   // 6. Remove Button
                   SizedBox(
                     width: double.infinity,
                     child: TextButton.icon(
                       onPressed: () {
+                        HapticFeedback.lightImpact();
                         // TODO: Implement remove logic
                         Navigator.pop(context);
                       },
@@ -431,7 +433,7 @@ class _AnimeEntryBottomSheetState extends State<AnimeEntryBottomSheet> {
                 Icon(
                   Icons.calendar_today_rounded,
                   size: 18,
-                  color: date != null ? AppTheme.primary : Colors.grey.shade400,
+                  color: date != null ? AppTheme.primary : Colors.grey.shade600,
                 ),
                 const SizedBox(width: 10),
                 Expanded(
@@ -442,7 +444,7 @@ class _AnimeEntryBottomSheetState extends State<AnimeEntryBottomSheet> {
                     style: TextStyle(
                       color: date != null
                           ? Colors.black87
-                          : Colors.grey.shade400,
+                          : Colors.grey.shade500,
                       fontWeight: date != null
                           ? FontWeight.w600
                           : FontWeight.normal,

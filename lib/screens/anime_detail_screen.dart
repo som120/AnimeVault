@@ -391,18 +391,18 @@ class _AnimeDetailScreenState extends State<AnimeDetailScreen>
                               ),
                             ),
                           Positioned(
-                            bottom: 4,
-                            right: 4,
+                            bottom: -6,
+                            right: -6,
                             child: Container(
-                              width: 43,
-                              height: 43,
+                              width: 50,
+                              height: 50,
                               decoration: BoxDecoration(
                                 color: AppTheme.primary,
                                 shape: BoxShape.circle,
                                 boxShadow: const [
                                   BoxShadow(
-                                    color: Colors.black26,
-                                    blurRadius: 4,
+                                    color: Colors.black54,
+                                    blurRadius: 6,
                                     offset: Offset(0, 2),
                                   ),
                                 ],
