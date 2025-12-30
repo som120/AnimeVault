@@ -2,6 +2,8 @@ import 'package:ainme_vault/theme/app_theme.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:intl/intl.dart';
+import 'package:cloud_firestore/cloud_firestore.dart';
+import 'package:firebase_auth/firebase_auth.dart';
 
 class AnimeEntryBottomSheet extends StatefulWidget {
   final Map<String, dynamic> anime;
@@ -15,7 +17,6 @@ class AnimeEntryBottomSheet extends StatefulWidget {
 class _AnimeEntryBottomSheetState extends State<AnimeEntryBottomSheet> {
   String _status = "Planning"; // Default
   int _progress = 0;
-  int _score = 0;
   DateTime? _startDate;
   DateTime? _finishDate;
   late int _totalEpisodes;
@@ -28,10 +29,106 @@ class _AnimeEntryBottomSheetState extends State<AnimeEntryBottomSheet> {
   @override
   void initState() {
     super.initState();
-    // Initialize with existing data if available (mocking interaction for now)
     _totalEpisodes = widget.anime['episodes'] ?? 0;
-    // 🔥 TEMP LOGIC (later replace with Firestore check)
-    _isNewEntry = true; //_isNewEntry = existingEntry == null;
+    _isNewEntry = true;
+    _checkForExistingEntry();
+  }
+
+  Future<void> _checkForExistingEntry() async {
+    final user = FirebaseAuth.instance.currentUser;
+    if (user == null) return;
+
+    try {
+      final animeId = widget.anime['id'].toString();
+      final doc = await FirebaseFirestore.instance
+          .collection('users')
+          .doc(user.uid)
+          .collection('anime')
+          .doc(animeId)
+          .get();
+
+      if (doc.exists && mounted) {
+        final data = doc.data()!;
+        setState(() {
+          _isNewEntry = false;
+          _status = data['status'] ?? "Planning";
+          _progress = data['progress'] ?? 0;
+          // Don't restore score - we only show anime's rating now
+
+          if (data['startDate'] != null) {
+            _startDate = (data['startDate'] as Timestamp).toDate();
+          }
+          if (data['finishDate'] != null) {
+            _finishDate = (data['finishDate'] as Timestamp).toDate();
+          }
+        });
+      }
+    } catch (e) {
+      debugPrint("Error checking anime entry: $e");
+    }
+  }
+
+  Future<void> _saveEntry() async {
+    final user = FirebaseAuth.instance.currentUser;
+    if (user == null) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('Please login to save anime')),
+      );
+      return;
+    }
+
+    try {
+      final animeId = widget.anime['id'].toString();
+      final title =
+          widget.anime['title']['english'] ??
+          widget.anime['title']['romaji'] ??
+          'Unknown';
+      final coverImage = widget.anime['coverImage']['large'] ?? "";
+
+      final data = {
+        'id': widget.anime['id'],
+        'title': title,
+        'coverImage': coverImage,
+        'status': _status,
+        'progress': _progress,
+        'totalEpisodes': _totalEpisodes,
+        'averageScore':
+            widget.anime['averageScore'], // Store anime's actual rating
+        'updatedAt': FieldValue.serverTimestamp(),
+      };
+
+      if (_startDate != null) {
+        data['startDate'] = Timestamp.fromDate(_startDate!);
+      }
+      if (_finishDate != null) {
+        data['finishDate'] = Timestamp.fromDate(_finishDate!);
+      }
+
+      await FirebaseFirestore.instance
+          .collection('users')
+          .doc(user.uid)
+          .collection('anime')
+          .doc(animeId)
+          .set(data, SetOptions(merge: true));
+
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text(_isNewEntry ? 'Added to list' : 'Entry updated'),
+            backgroundColor: Colors.green,
+          ),
+        );
+      }
+    } catch (e) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text('Error saving: $e'),
+            backgroundColor: Colors.red,
+          ),
+        );
+      }
+    }
   }
 
   @override
@@ -70,10 +167,10 @@ class _AnimeEntryBottomSheetState extends State<AnimeEntryBottomSheet> {
                 ),
                 TextButton(
                   onPressed: (_isNewEntry || _hasChanges)
-                      ? () {
+                      ? () async {
                           HapticFeedback.lightImpact();
-                          Navigator.pop(context);
-                          // _saveEntry();
+                          await _saveEntry();
+                          if (context.mounted) Navigator.pop(context);
                         }
                       : null,
                   child: Text(
@@ -251,82 +348,53 @@ class _AnimeEntryBottomSheetState extends State<AnimeEntryBottomSheet> {
 
                   const SizedBox(height: 20),
 
-                  // 4. Rating (0-10)
+                  // 4. Anime Score (Read-only display from AniList)
                   Row(
                     mainAxisAlignment: MainAxisAlignment.spaceBetween,
                     children: [
-                      _buildSectionTitle("Rating"),
-                      if (_score > 0)
-                        Container(
-                          padding: const EdgeInsets.symmetric(
-                            horizontal: 10,
-                            vertical: 4,
-                          ),
-                          decoration: BoxDecoration(
-                            color: Colors.amber.shade100,
-                            borderRadius: BorderRadius.circular(20),
-                          ),
-                          child: Row(
-                            children: [
-                              const Icon(
-                                Icons.star_rounded,
-                                size: 16,
-                                color: Colors.amber,
-                              ),
-                              const SizedBox(width: 4),
-                              Text(
-                                "$_score",
-                                style: const TextStyle(
-                                  color: Colors.amber,
-                                  fontWeight: FontWeight.bold,
-                                ),
-                              ),
-                            ],
+                      _buildSectionTitle("Anime Rating"),
+                      Container(
+                        padding: const EdgeInsets.symmetric(
+                          horizontal: 12,
+                          vertical: 6,
+                        ),
+                        decoration: BoxDecoration(
+                          color: Colors.amber.shade50,
+                          borderRadius: BorderRadius.circular(20),
+                          border: Border.all(
+                            color: Colors.amber.shade200,
+                            width: 1.5,
                           ),
                         ),
-                    ],
-                  ),
-                  const SizedBox(height: 16),
-                  SingleChildScrollView(
-                    scrollDirection: Axis.horizontal,
-                    child: Row(
-                      children: List.generate(11, (index) {
-                        final isSelected = index == _score;
-                        return Padding(
-                          padding: const EdgeInsets.only(right: 12),
-                          child: GestureDetector(
-                            onTap: () => setState(() => _score = index),
-                            child: AnimatedContainer(
-                              duration: const Duration(milliseconds: 200),
-                              width: 50,
-                              height: 50,
-                              decoration: BoxDecoration(
-                                color: isSelected
-                                    ? AppTheme.primary
-                                    : Colors.white,
-                                borderRadius: BorderRadius.circular(12),
-                                border: Border.all(
-                                  color: isSelected
-                                      ? AppTheme.primary
-                                      : Colors.grey.shade300,
-                                ),
-                                boxShadow: [],
-                              ),
-                              alignment: Alignment.center,
-                              child: Text(
-                                "$index",
-                                style: TextStyle(
-                                  fontSize: 18,
-                                  fontWeight: FontWeight.bold,
-                                  color: isSelected
-                                      ? Colors.white
-                                      : Colors.grey.shade800,
-                                ),
+                        child: Row(
+                          mainAxisSize: MainAxisSize.min,
+                          children: [
+                            const Icon(
+                              Icons.star_rounded,
+                              color: Colors.amber,
+                              size: 20,
+                            ),
+                            const SizedBox(width: 6),
+                            Text(
+                              "${((widget.anime['averageScore'] ?? 0) / 10).toStringAsFixed(1)}/10",
+                              style: const TextStyle(
+                                color: Colors.amber,
+                                fontWeight: FontWeight.bold,
+                                fontSize: 16,
                               ),
                             ),
-                          ),
-                        );
-                      }),
+                          ],
+                        ),
+                      ),
+                    ],
+                  ),
+                  const SizedBox(height: 8),
+                  Text(
+                    "This is the official rating from AniList",
+                    style: TextStyle(
+                      fontSize: 12,
+                      color: Colors.grey.shade500,
+                      fontStyle: FontStyle.italic,
                     ),
                   ),
 
@@ -386,6 +454,34 @@ class _AnimeEntryBottomSheetState extends State<AnimeEntryBottomSheet> {
 
                         if (confirmed == true) {
                           // remove logic
+                          final user = FirebaseAuth.instance.currentUser;
+                          if (user != null) {
+                            try {
+                              await FirebaseFirestore.instance
+                                  .collection('users')
+                                  .doc(user.uid)
+                                  .collection('anime')
+                                  .doc(widget.anime['id'].toString())
+                                  .delete();
+
+                              if (context.mounted) {
+                                Navigator.pop(context); // Close dialog
+                                Navigator.pop(context); // Close bottom sheet
+                                ScaffoldMessenger.of(context).showSnackBar(
+                                  const SnackBar(
+                                    content: Text('Removed from list'),
+                                    backgroundColor: Colors.red,
+                                  ),
+                                );
+                              }
+                            } catch (e) {
+                              if (context.mounted) {
+                                ScaffoldMessenger.of(context).showSnackBar(
+                                  SnackBar(content: Text('Error removing: $e')),
+                                );
+                              }
+                            }
+                          }
                         }
                       },
 

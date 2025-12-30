@@ -6,6 +6,7 @@ import 'package:cached_network_image/cached_network_image.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:flutter/material.dart';
 import 'package:shimmer/shimmer.dart';
+import 'package:firebase_auth/firebase_auth.dart';
 
 class HomeScreen extends StatefulWidget {
   const HomeScreen({super.key});
@@ -297,18 +298,19 @@ class _HomeScreenState extends State<HomeScreen> {
                   ),
                 ),
                 Padding(
-                  padding: const EdgeInsets.symmetric(
-                    horizontal: 24.0,
-                    vertical: 16,
-                  ),
-                  child: Row(
-                    children: [
-                      _statusChip("Completed"),
-                      const SizedBox(width: 12),
-                      _statusChip("Planning"),
-                      const SizedBox(width: 12),
-                      _statusChip("Watching"),
-                    ],
+                  padding: const EdgeInsets.symmetric(vertical: 16),
+                  child: SingleChildScrollView(
+                    scrollDirection: Axis.horizontal,
+                    padding: const EdgeInsets.symmetric(horizontal: 24.0),
+                    child: Row(
+                      children: [
+                        _statusChip("Completed"),
+                        const SizedBox(width: 12),
+                        _statusChip("Planning"),
+                        const SizedBox(width: 12),
+                        _statusChip("Watching"),
+                      ],
+                    ),
                   ),
                 ),
 
@@ -493,8 +495,32 @@ class MyAnimeList extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final user = FirebaseAuth.instance.currentUser;
+
+    if (user == null) {
+      return Center(
+        child: Column(
+          mainAxisAlignment: MainAxisAlignment.center,
+          children: [
+            const Icon(Icons.lock_outline, size: 48, color: Colors.grey),
+            const SizedBox(height: 16),
+            const Text(
+              "Login to track your anime",
+              style: TextStyle(
+                color: Colors.grey,
+                fontSize: 16,
+                fontWeight: FontWeight.w500,
+              ),
+            ),
+          ],
+        ),
+      );
+    }
+
     return StreamBuilder<QuerySnapshot>(
       stream: FirebaseFirestore.instance
+          .collection('users')
+          .doc(user.uid)
           .collection('anime')
           .where('status', isEqualTo: status)
           .snapshots(),
@@ -522,8 +548,20 @@ class MyAnimeList extends StatelessWidget {
             final data = doc.data() as Map<String, dynamic>;
 
             final title = data['title'] ?? 'Unknown';
-            final genre = data['genre'] ?? 'Unknown';
-            final rating = data['rating']?.toString() ?? '?';
+            final rating = data['averageScore'] != null
+                ? (data['averageScore'] / 10).toStringAsFixed(1)
+                : '?';
+            final progress = data['progress'] ?? 0;
+            final totalEpisodes = data['totalEpisodes'] ?? '?';
+
+            // Reconstruct anime object from Firestore data
+            final anime = {
+              'id': data['id'],
+              'title': {'english': data['title'], 'romaji': data['title']},
+              'coverImage': {'large': data['coverImage']},
+              'averageScore': data['averageScore'],
+              'episodes': data['totalEpisodes'],
+            };
 
             return Container(
               margin: const EdgeInsets.symmetric(vertical: 8),
@@ -539,12 +577,66 @@ class MyAnimeList extends StatelessWidget {
                 ],
               ),
               child: ListTile(
+                onTap: () {
+                  Navigator.push(
+                    context,
+                    MaterialPageRoute(
+                      builder: (context) => AnimeDetailScreen(anime: anime),
+                    ),
+                  );
+                },
+                contentPadding: const EdgeInsets.symmetric(
+                  horizontal: 16,
+                  vertical: 8,
+                ),
+                leading: ClipRRect(
+                  borderRadius: BorderRadius.circular(8),
+                  child: data['coverImage'] != null
+                      ? CachedNetworkImage(
+                          imageUrl: data['coverImage'],
+                          width: 50,
+                          height: 70,
+                          fit: BoxFit.cover,
+                          errorWidget: (context, url, error) =>
+                              const Icon(Icons.error),
+                        )
+                      : Container(width: 50, height: 70, color: Colors.grey),
+                ),
                 title: Text(
                   title,
                   style: const TextStyle(fontWeight: FontWeight.bold),
+                  maxLines: 2,
+                  overflow: TextOverflow.ellipsis,
                 ),
-                subtitle: Text(genre),
-                trailing: Text("⭐ $rating"),
+                subtitle: Text("Ep: $progress / $totalEpisodes"),
+                trailing: Container(
+                  padding: const EdgeInsets.symmetric(
+                    horizontal: 8,
+                    vertical: 4,
+                  ),
+                  decoration: BoxDecoration(
+                    color: Colors.amber.withOpacity(0.2),
+                    borderRadius: BorderRadius.circular(12),
+                  ),
+                  child: Row(
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      const Icon(
+                        Icons.star_rounded,
+                        size: 16,
+                        color: Colors.amber,
+                      ),
+                      const SizedBox(width: 4),
+                      Text(
+                        "$rating",
+                        style: const TextStyle(
+                          fontWeight: FontWeight.bold,
+                          color: Colors.amber,
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
               ),
             );
           },
@@ -559,15 +651,26 @@ class GreetingSection extends StatelessWidget {
 
   const GreetingSection({super.key, required this.textColor});
 
+  String _getGreeting() {
+    final hour = DateTime.now().hour;
+    if (hour < 12) return "Good Morning";
+    if (hour < 17) return "Good Afternoon";
+    return "Good Evening";
+  }
+
   @override
   Widget build(BuildContext context) {
+    // Get current user from Firebase
+    final user = FirebaseAuth.instance.currentUser;
+    final displayName = user?.displayName ?? "Anime Fan";
+
     return Padding(
       padding: const EdgeInsets.symmetric(horizontal: 24.0),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           Text(
-            "Good Morning",
+            _getGreeting(),
             style: TextStyle(
               color: textColor,
               fontSize: 16,
@@ -576,7 +679,7 @@ class GreetingSection extends StatelessWidget {
           ),
           const SizedBox(height: 4),
           Text(
-            "Anime Fan",
+            displayName,
             style: TextStyle(
               color: textColor,
               fontSize: 24,

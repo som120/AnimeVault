@@ -65,9 +65,10 @@ class _LoginScreenState extends State<LoginScreen> {
 
       _showSnackBar(message: "Login successful", isError: false);
 
-      Navigator.pushReplacement(
+      Navigator.pushAndRemoveUntil(
         context,
         MaterialPageRoute(builder: (_) => const MainScreen()),
+        (route) => false, // Remove all previous routes
       );
     } on FirebaseAuthException catch (e) {
       String message = "Incorrect email or password";
@@ -119,9 +120,10 @@ class _LoginScreenState extends State<LoginScreen> {
 
       _showSnackBar(message: "Signed in with Google", isError: false);
 
-      Navigator.pushReplacement(
+      Navigator.pushAndRemoveUntil(
         context,
         MaterialPageRoute(builder: (_) => const MainScreen()),
+        (route) => false, // Remove all previous routes
       );
     } on FirebaseAuthException catch (e) {
       if (e.code == 'account-exists-with-different-credential') {
