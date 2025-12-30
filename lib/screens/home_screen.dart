@@ -1,6 +1,7 @@
 import 'dart:async';
 import 'package:ainme_vault/screens/anime_detail_screen.dart';
 import 'package:ainme_vault/services/anilist_service.dart';
+import 'package:ainme_vault/theme/app_theme.dart';
 import 'package:cached_network_image/cached_network_image.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:flutter/material.dart';
@@ -15,24 +16,61 @@ class HomeScreen extends StatefulWidget {
 
 class _HomeScreenState extends State<HomeScreen> {
   // ---------------- STATE VARIABLES ----------------
-  final PageController _pageController = PageController(viewportFraction: 1.0);
-  int _currentIndex = 0;
+  final PageController _pageController = PageController();
   List<dynamic> _airingAnimeList = [];
   bool _isLoading = true;
+  bool _isDark(Color c) => c.computeLuminance() < 0.5;
+  String _selectedStatus = 'Completed';
 
-  Color _backgroundColor = Colors.white;
   Timer? _timer;
+  static const double _cardHorizontalMargin = 24.0;
+
+  late final ValueNotifier<Color> _bgColorNotifier;
+  late final ValueNotifier<int> _pageIndexNotifier;
+
+  Color _processCoverColor(Color color) {
+    final hsl = HSLColor.fromColor(color);
+
+    // Clamp saturation (avoid neon colors)
+    final double saturation = hsl.saturation.clamp(0.25, 0.55);
+
+    // Clamp lightness (avoid too dark / too bright)
+    final double lightness = hsl.lightness.clamp(0.55, 0.75);
+
+    final softened = hsl
+        .withSaturation(saturation)
+        .withLightness(lightness)
+        .toColor();
+
+    // Blend slightly with white for UI softness
+    return Color.lerp(softened, Colors.white, 0.15)!;
+  }
+
+  Color _getProcessedColor(int index) {
+    if (index < 0 || index >= _airingAnimeList.length) {
+      return Colors.white;
+    }
+
+    final hex = _airingAnimeList[index]['coverImage']?['color'];
+    if (hex == null) return Colors.white;
+
+    return _processCoverColor(_hexToColor(hex));
+  }
 
   // ---------------- LIFECYCLE ----------------
   @override
   void initState() {
     super.initState();
+    _bgColorNotifier = ValueNotifier(Colors.white);
+    _pageIndexNotifier = ValueNotifier(0);
     _fetchAiringAnime();
   }
 
   @override
   void dispose() {
     _timer?.cancel();
+    _bgColorNotifier.dispose();
+    _pageIndexNotifier.dispose();
     _pageController.dispose();
     super.dispose();
   }
@@ -49,7 +87,8 @@ class _HomeScreenState extends State<HomeScreen> {
 
           // Set initial color if available
           if (_airingAnimeList.isNotEmpty) {
-            _updateColor(0);
+            _bgColorNotifier.value = _getProcessedColor(0);
+            _pageIndexNotifier.value = 0;
             _startAutoScroll();
           }
         });
@@ -64,22 +103,6 @@ class _HomeScreenState extends State<HomeScreen> {
     }
   }
 
-  void _updateColor(int index) {
-    if (index >= 0 && index < _airingAnimeList.length) {
-      final anime = _airingAnimeList[index];
-      final colorHex = anime['coverImage']?['color'];
-      if (colorHex != null) {
-        setState(() {
-          _backgroundColor = _hexToColor(colorHex);
-        });
-      } else {
-        setState(() {
-          _backgroundColor = Colors.white; // Default fallback
-        });
-      }
-    }
-  }
-
   Color _hexToColor(String hex) {
     hex = hex.replaceAll("#", "");
     if (hex.length == 6) {
@@ -89,18 +112,19 @@ class _HomeScreenState extends State<HomeScreen> {
   }
 
   void _startAutoScroll() {
-    _timer = Timer.periodic(const Duration(seconds: 5), (timer) {
-      if (_pageController.hasClients) {
-        int nextPage = _currentIndex + 1;
-        if (nextPage >= _airingAnimeList.length) {
-          nextPage = 0;
-        }
-        _pageController.animateToPage(
-          nextPage,
-          duration: const Duration(milliseconds: 800),
-          curve: Curves.fastOutSlowIn,
-        );
-      }
+    _timer?.cancel();
+
+    _timer = Timer.periodic(const Duration(seconds: 5), (_) {
+      if (!_pageController.hasClients || _airingAnimeList.isEmpty) return;
+
+      final current = _pageIndexNotifier.value;
+      final next = (current + 1) % _airingAnimeList.length;
+
+      _pageController.animateToPage(
+        next,
+        duration: const Duration(milliseconds: 800),
+        curve: Curves.easeInOut,
+      );
     });
   }
 
@@ -119,21 +143,27 @@ class _HomeScreenState extends State<HomeScreen> {
           Positioned.fill(
             child: Column(
               children: [
-                AnimatedContainer(
-                  duration: const Duration(milliseconds: 500),
-                  height: 400, // Cover top portion
-                  decoration: BoxDecoration(
-                    gradient: LinearGradient(
-                      begin: Alignment.topCenter,
-                      end: Alignment.bottomCenter,
-                      colors: [
-                        _backgroundColor,
-                        _backgroundColor.withOpacity(0.8),
-                        Colors.white,
-                      ],
-                      stops: const [0.0, 0.6, 1.0],
-                    ),
-                  ),
+                ValueListenableBuilder<Color>(
+                  valueListenable: _bgColorNotifier,
+                  builder: (_, color, __) {
+                    return AnimatedContainer(
+                      duration: const Duration(milliseconds: 600),
+                      curve: Curves.easeOutCubic,
+                      height: 360,
+                      decoration: BoxDecoration(
+                        gradient: LinearGradient(
+                          begin: Alignment.topCenter,
+                          end: Alignment.bottomCenter,
+                          colors: [
+                            color,
+                            Color.lerp(color, Colors.white, 0.35)!,
+                            Colors.white,
+                          ],
+                          stops: const [0.0, 0.6, 1.0],
+                        ),
+                      ),
+                    );
+                  },
                 ),
                 Expanded(child: Container(color: Colors.white)),
               ],
@@ -147,31 +177,19 @@ class _HomeScreenState extends State<HomeScreen> {
               children: [
                 const SizedBox(height: 20),
                 // Greeting
-                Padding(
-                  padding: const EdgeInsets.symmetric(horizontal: 24.0),
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      const Text(
-                        "Good Morning",
-                        style: TextStyle(
-                          color: Colors.white,
-                          fontSize: 16,
-                          fontWeight: FontWeight.w500,
-                        ),
-                      ),
-                      const SizedBox(height: 4),
-                      const Text(
-                        "Anime Fan", // Placeholder for User Name
-                        style: TextStyle(
-                          color: Colors.white,
-                          fontSize: 24,
-                          fontWeight: FontWeight.bold,
-                        ),
-                      ),
-                    ],
-                  ),
+                ValueListenableBuilder<Color>(
+                  valueListenable: _bgColorNotifier,
+                  builder: (_, bgColor, __) {
+                    final textColor = _isDark(bgColor)
+                        ? Colors.white
+                        : Colors.black87;
+
+                    return RepaintBoundary(
+                      child: GreetingSection(textColor: textColor),
+                    );
+                  },
                 ),
+
                 const SizedBox(height: 30),
 
                 // Carousel
@@ -184,129 +202,117 @@ class _HomeScreenState extends State<HomeScreen> {
                     children: [
                       SizedBox(
                         height: 220,
-                        child: PageView.builder(
-                          controller: _pageController,
-                          itemCount: _airingAnimeList.length,
-                          onPageChanged: (index) {
-                            setState(() {
-                              _currentIndex = index;
-                            });
-                            _updateColor(index);
+                        child: NotificationListener<ScrollNotification>(
+                          onNotification: (notification) {
+                            if (notification is ScrollStartNotification) {
+                              _timer?.cancel();
+                            } else if (notification is ScrollEndNotification) {
+                              _startAutoScroll();
+                            }
+                            return false; // allow notification to bubble
                           },
-                          itemBuilder: (context, index) {
-                            final anime = _airingAnimeList[index];
-                            return _buildAnimeCard(anime);
-                          },
+                          child: PageView.builder(
+                            controller: _pageController,
+                            itemCount: _airingAnimeList.length,
+                            onPageChanged: (index) {
+                              _pageIndexNotifier.value = index;
+                              _bgColorNotifier.value = _getProcessedColor(
+                                index,
+                              );
+                            },
+                            itemBuilder: (context, index) {
+                              final anime = _airingAnimeList[index];
+                              return _buildAnimeCard(anime);
+                            },
+                          ),
                         ),
                       ),
+
                       const SizedBox(height: 16),
                       // Indicators
-                      Row(
-                        mainAxisAlignment: MainAxisAlignment.center,
-                        children: List.generate(_airingAnimeList.length, (
-                          index,
-                        ) {
-                          return AnimatedContainer(
-                            duration: const Duration(milliseconds: 300),
-                            margin: const EdgeInsets.symmetric(horizontal: 4),
-                            height: 8,
-                            width: _currentIndex == index ? 24 : 8,
-                            decoration: BoxDecoration(
-                              color: _currentIndex == index
-                                  ? Colors
-                                        .white // Active dot matches bg or white?
-                                  // Actually, on a potentially white background, white dots are invisible.
-                                  // If the background is colored, white is fine.
-                                  // But "behind the banner" is colored.
-                                  // The dots are usually below the banner.
-                                  // If the colored bg extends lower, white is good.
-                                  // If not, we need a contrasting color.
-                                  // Let's use a semi-transparent white/grey.
-                                  : Colors.white.withOpacity(0.5),
-                              borderRadius: BorderRadius.circular(4),
-                            ),
+                      ValueListenableBuilder<int>(
+                        valueListenable: _pageIndexNotifier,
+                        builder: (_, current, __) {
+                          return Row(
+                            mainAxisAlignment: MainAxisAlignment.center,
+                            children: List.generate(_airingAnimeList.length, (
+                              index,
+                            ) {
+                              return AnimatedContainer(
+                                duration: const Duration(milliseconds: 300),
+                                margin: const EdgeInsets.symmetric(
+                                  horizontal: 4,
+                                ),
+                                height: 8,
+                                width: current == index ? 24 : 8,
+                                decoration: BoxDecoration(
+                                  color: current == index
+                                      ? AppTheme.primary
+                                      : AppTheme.accent.withOpacity(0.5),
+                                  borderRadius: BorderRadius.circular(4),
+                                ),
+                              );
+                            }),
                           );
-                        }),
+                        },
                       ),
                     ],
                   ),
                 const SizedBox(height: 20),
-                Expanded(
-                  child: StreamBuilder<QuerySnapshot>(
-                    stream: FirebaseFirestore.instance
-                        .collection('anime')
-                        .snapshots(),
-                    builder: (context, snapshot) {
-                      if (snapshot.connectionState == ConnectionState.waiting) {
-                        return const Center(child: CircularProgressIndicator());
-                      }
-                      if (!snapshot.hasData || snapshot.data!.docs.isEmpty) {
-                        return const Center(
-                          child: Text(
-                            "No tracked anime found 😢",
-                            style: TextStyle(color: Colors.black54),
+                Padding(
+                  padding: const EdgeInsets.symmetric(horizontal: 24.0),
+                  child: Row(
+                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                    children: [
+                      const Text(
+                        "My List",
+                        style: TextStyle(
+                          fontSize: 24,
+                          fontWeight: FontWeight.bold,
+                        ),
+                      ),
+                      Row(
+                        children: [
+                          IconButton(
+                            icon: const Icon(Icons.grid_view_rounded),
+                            style: IconButton.styleFrom(
+                              foregroundColor: AppTheme.primary,
+                            ),
+                            onPressed: () {
+                              // TODO: grid view toggle
+                            },
                           ),
-                        );
-                      }
-                      final animeList = snapshot.data!.docs;
-                      return ListView.builder(
-                        padding: const EdgeInsets.symmetric(horizontal: 16),
-                        itemCount: animeList.length,
-                        itemBuilder: (context, index) {
-                          var anime = animeList[index];
-                          // Handle potential missing fields gracefully
-                          final title =
-                              anime.data().toString().contains('title')
-                              ? anime['title']
-                              : 'Unknown';
-                          final genre =
-                              anime.data().toString().contains('genre')
-                              ? anime['genre']
-                              : 'Unknown';
-                          final rating =
-                              anime.data().toString().contains('rating')
-                              ? anime['rating']
-                              : '?';
-
-                          return Card(
-                            elevation: 2,
-                            margin: const EdgeInsets.symmetric(vertical: 8),
-                            shape: RoundedRectangleBorder(
-                              borderRadius: BorderRadius.circular(12),
+                          IconButton(
+                            icon: const Icon(Icons.filter_list_rounded),
+                            style: IconButton.styleFrom(
+                              foregroundColor: AppTheme.primary,
                             ),
-                            child: ListTile(
-                              contentPadding: const EdgeInsets.all(12),
-                              title: Text(
-                                title,
-                                style: const TextStyle(
-                                  fontWeight: FontWeight.bold,
-                                ),
-                              ),
-                              subtitle: Text(genre),
-                              trailing: Container(
-                                padding: const EdgeInsets.symmetric(
-                                  horizontal: 8,
-                                  vertical: 4,
-                                ),
-                                decoration: BoxDecoration(
-                                  color: Colors.amber.withOpacity(0.2),
-                                  borderRadius: BorderRadius.circular(8),
-                                ),
-                                child: Text(
-                                  "⭐ $rating",
-                                  style: const TextStyle(
-                                    color: Colors.amber,
-                                    fontWeight: FontWeight.bold,
-                                  ),
-                                ),
-                              ),
-                            ),
-                          );
-                        },
-                      );
-                    },
+                            onPressed: () {
+                              // TODO: open filter bottom sheet
+                            },
+                          ),
+                        ],
+                      ),
+                    ],
                   ),
                 ),
+                Padding(
+                  padding: const EdgeInsets.symmetric(
+                    horizontal: 24.0,
+                    vertical: 16,
+                  ),
+                  child: Row(
+                    children: [
+                      _statusChip("Completed"),
+                      const SizedBox(width: 12),
+                      _statusChip("Planning"),
+                      const SizedBox(width: 12),
+                      _statusChip("Watching"),
+                    ],
+                  ),
+                ),
+
+                Expanded(child: MyAnimeList(status: _selectedStatus)),
               ],
             ),
           ),
@@ -315,9 +321,37 @@ class _HomeScreenState extends State<HomeScreen> {
     );
   }
 
+  Widget _statusChip(String label) {
+    final bool isSelected = _selectedStatus == label;
+
+    return GestureDetector(
+      onTap: () {
+        setState(() {
+          _selectedStatus = label;
+        });
+      },
+      child: AnimatedContainer(
+        duration: const Duration(milliseconds: 250),
+        padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 10),
+        decoration: BoxDecoration(
+          color: isSelected ? AppTheme.primary : Colors.grey.shade300,
+          borderRadius: BorderRadius.circular(24),
+        ),
+        child: Text(
+          label,
+          style: TextStyle(
+            color: isSelected ? Colors.white : Colors.black87,
+            fontWeight: FontWeight.w600,
+          ),
+        ),
+      ),
+    );
+  }
+
   Widget _buildAnimeCard(dynamic anime) {
     final coverImage = anime['coverImage']?['large'] ?? "";
     final title = anime['title']?['english'] ?? anime['title']?['romaji'] ?? "";
+    final score = ((anime['averageScore'] ?? 0) as num) / 10;
 
     return GestureDetector(
       onTap: () {
@@ -329,12 +363,12 @@ class _HomeScreenState extends State<HomeScreen> {
         );
       },
       child: Container(
-        margin: const EdgeInsets.symmetric(horizontal: 24),
+        margin: const EdgeInsets.symmetric(horizontal: _cardHorizontalMargin),
         decoration: BoxDecoration(
-          borderRadius: BorderRadius.circular(20),
+          borderRadius: BorderRadius.circular(50),
           boxShadow: [
             BoxShadow(
-              color: Colors.black.withOpacity(0.2),
+              color: Colors.black.withOpacity(0.1),
               blurRadius: 10,
               offset: const Offset(0, 5),
             ),
@@ -367,7 +401,7 @@ class _HomeScreenState extends State<HomeScreen> {
                       end: Alignment.bottomCenter,
                       colors: [
                         Colors.transparent,
-                        Colors.black.withOpacity(0.8),
+                        Colors.black.withOpacity(0.7),
                       ],
                     ),
                   ),
@@ -375,7 +409,7 @@ class _HomeScreenState extends State<HomeScreen> {
                     title,
                     style: const TextStyle(
                       color: Colors.white,
-                      fontSize: 18,
+                      fontSize: 16,
                       fontWeight: FontWeight.bold,
                     ),
                     maxLines: 1,
@@ -392,7 +426,7 @@ class _HomeScreenState extends State<HomeScreen> {
                     vertical: 4,
                   ),
                   decoration: BoxDecoration(
-                    color: Colors.black.withOpacity(0.7),
+                    color: Colors.black.withOpacity(0.5),
                     borderRadius: BorderRadius.circular(12),
                   ),
                   child: Row(
@@ -405,7 +439,7 @@ class _HomeScreenState extends State<HomeScreen> {
                       ),
                       const SizedBox(width: 4),
                       Text(
-                        "${(anime['averageScore'] ?? 0) ~/ 10}.${(anime['averageScore'] ?? 0) % 10}",
+                        score.toStringAsFixed(1),
                         style: const TextStyle(
                           color: Colors.white,
                           fontSize: 12,
@@ -425,17 +459,16 @@ class _HomeScreenState extends State<HomeScreen> {
 
   Widget _buildLoadingShimmer() {
     return SizedBox(
-      height: 180,
+      height: 220,
       child: PageView.builder(
         controller: _pageController,
         itemCount: 1,
         itemBuilder: (context, index) {
           return Container(
-            margin: const EdgeInsets.symmetric(horizontal: 10),
-            decoration: BoxDecoration(
-              color: Colors.white,
-              borderRadius: BorderRadius.circular(20),
+            margin: const EdgeInsets.symmetric(
+              horizontal: _cardHorizontalMargin,
             ),
+            decoration: BoxDecoration(borderRadius: BorderRadius.circular(20)),
             child: Shimmer.fromColors(
               baseColor: Colors.grey[300]!,
               highlightColor: Colors.grey[100]!,
@@ -448,6 +481,109 @@ class _HomeScreenState extends State<HomeScreen> {
             ),
           );
         },
+      ),
+    );
+  }
+}
+
+class MyAnimeList extends StatelessWidget {
+  final String status;
+
+  const MyAnimeList({super.key, required this.status});
+
+  @override
+  Widget build(BuildContext context) {
+    return StreamBuilder<QuerySnapshot>(
+      stream: FirebaseFirestore.instance
+          .collection('anime')
+          .where('status', isEqualTo: status)
+          .snapshots(),
+      builder: (context, snapshot) {
+        if (snapshot.connectionState == ConnectionState.waiting) {
+          return const Center(child: CircularProgressIndicator());
+        }
+
+        if (!snapshot.hasData || snapshot.data!.docs.isEmpty) {
+          return Center(
+            child: Text(
+              "No $status anime found 😢",
+              style: const TextStyle(color: Colors.black54),
+            ),
+          );
+        }
+
+        final animeList = snapshot.data!.docs;
+
+        return ListView.builder(
+          padding: const EdgeInsets.symmetric(horizontal: 16),
+          itemCount: animeList.length,
+          itemBuilder: (context, index) {
+            final doc = animeList[index];
+            final data = doc.data() as Map<String, dynamic>;
+
+            final title = data['title'] ?? 'Unknown';
+            final genre = data['genre'] ?? 'Unknown';
+            final rating = data['rating']?.toString() ?? '?';
+
+            return Container(
+              margin: const EdgeInsets.symmetric(vertical: 8),
+              decoration: BoxDecoration(
+                color: Colors.white,
+                borderRadius: BorderRadius.circular(16),
+                boxShadow: [
+                  BoxShadow(
+                    color: Colors.black.withOpacity(0.08),
+                    blurRadius: 16,
+                    offset: const Offset(0, 8),
+                  ),
+                ],
+              ),
+              child: ListTile(
+                title: Text(
+                  title,
+                  style: const TextStyle(fontWeight: FontWeight.bold),
+                ),
+                subtitle: Text(genre),
+                trailing: Text("⭐ $rating"),
+              ),
+            );
+          },
+        );
+      },
+    );
+  }
+}
+
+class GreetingSection extends StatelessWidget {
+  final Color textColor;
+
+  const GreetingSection({super.key, required this.textColor});
+
+  @override
+  Widget build(BuildContext context) {
+    return Padding(
+      padding: const EdgeInsets.symmetric(horizontal: 24.0),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Text(
+            "Good Morning",
+            style: TextStyle(
+              color: textColor,
+              fontSize: 16,
+              fontWeight: FontWeight.w500,
+            ),
+          ),
+          const SizedBox(height: 4),
+          Text(
+            "Anime Fan",
+            style: TextStyle(
+              color: textColor,
+              fontSize: 24,
+              fontWeight: FontWeight.bold,
+            ),
+          ),
+        ],
       ),
     );
   }
