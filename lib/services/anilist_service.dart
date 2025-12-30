@@ -121,7 +121,7 @@ class AniListService {
           status
           bannerImage
           startDate { year }
-          coverImage { medium large }
+          coverImage { medium large color }
         }
       }
     }
