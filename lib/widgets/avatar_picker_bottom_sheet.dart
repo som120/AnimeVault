@@ -20,6 +20,7 @@ class _AvatarPickerBottomSheetState extends State<AvatarPickerBottomSheet> {
     'assets/avatars/avatar4.jpg',
     'assets/avatars/avatar5.jpg',
     'assets/avatars/avatar6.jpg',
+    'assets/avatars/avatar7.jpg',
   ];
 
   String? selectedAvatar;
