@@ -1,1 +1,44 @@
-{"flutter":{"platforms":{"android":{"default":{"projectId":"animevault-97456","appId":"1:15283861993:android:0ea34931bb79a1d05b7378","fileOutput":"android/app/google-services.json"}},"ios":{"default":{"projectId":"animevault-97456","appId":"1:15283861993:ios:b899b1c8260882bc5b7378","uploadDebugSymbols":false,"fileOutput":"ios/Runner/GoogleService-Info.plist"}},"macos":{"default":{"projectId":"animevault-97456","appId":"1:15283861993:ios:b899b1c8260882bc5b7378","uploadDebugSymbols":false,"fileOutput":"macos/Runner/GoogleService-Info.plist"}},"dart":{"lib/firebase_options.dart":{"projectId":"animevault-97456","configurations":{"android":"1:15283861993:android:0ea34931bb79a1d05b7378","ios":"1:15283861993:ios:b899b1c8260882bc5b7378","macos":"1:15283861993:ios:b899b1c8260882bc5b7378","web":"1:15283861993:web:db1ec1b9ba47b6d75b7378","windows":"1:15283861993:web:93f40e36292596515b7378"}}}}}}
+{
+  "firestore": {
+    "rules": "firestore.rules"
+  },
+  "flutter": {
+    "platforms": {
+      "android": {
+        "default": {
+          "projectId": "animevault-97456",
+          "appId": "1:15283861993:android:0ea34931bb79a1d05b7378",
+          "fileOutput": "android/app/google-services.json"
+        }
+      },
+      "ios": {
+        "default": {
+          "projectId": "animevault-97456",
+          "appId": "1:15283861993:ios:b899b1c8260882bc5b7378",
+          "uploadDebugSymbols": false,
+          "fileOutput": "ios/Runner/GoogleService-Info.plist"
+        }
+      },
+      "macos": {
+        "default": {
+          "projectId": "animevault-97456",
+          "appId": "1:15283861993:ios:b899b1c8260882bc5b7378",
+          "uploadDebugSymbols": false,
+          "fileOutput": "macos/Runner/GoogleService-Info.plist"
+        }
+      },
+      "dart": {
+        "lib/firebase_options.dart": {
+          "projectId": "animevault-97456",
+          "configurations": {
+            "android": "1:15283861993:android:0ea34931bb79a1d05b7378",
+            "ios": "1:15283861993:ios:b899b1c8260882bc5b7378",
+            "macos": "1:15283861993:ios:b899b1c8260882bc5b7378",
+            "web": "1:15283861993:web:db1ec1b9ba47b6d75b7378",
+            "windows": "1:15283861993:web:93f40e36292596515b7378"
+          }
+        }
+      }
+    }
+  }
+}

@@ -1,6 +1,13 @@
 import 'package:ainme_vault/utils/transitions.dart';
 import 'package:flutter/material.dart';
 import 'package:ainme_vault/screens/login_screen.dart';
+import 'package:firebase_auth/firebase_auth.dart';
+import 'package:google_sign_in/google_sign_in.dart';
+import 'package:cached_network_image/cached_network_image.dart';
+import 'package:cloud_firestore/cloud_firestore.dart';
+import 'package:ainme_vault/widgets/avatar_picker_bottom_sheet.dart';
+import 'package:ainme_vault/widgets/edit_profile_bottom_sheet.dart';
+import 'package:shared_preferences/shared_preferences.dart';
 import '../main.dart'; // import to access MainScreen
 
 class ProfileScreen extends StatelessWidget {
@@ -20,36 +27,168 @@ class ProfileScreen extends StatelessWidget {
       },
       child: Scaffold(
         backgroundColor: const Color(0xFFF5F3FF),
-        body: SingleChildScrollView(
+        body: StreamBuilder<User?>(
+          stream: FirebaseAuth.instance.authStateChanges(),
+          builder: (context, snapshot) {
+            // Loading state
+            if (snapshot.connectionState == ConnectionState.waiting) {
+              return const Center(child: CircularProgressIndicator());
+            }
+
+            // Check if user is logged in
+            final isLoggedIn = snapshot.hasData && snapshot.data != null;
+            final user = snapshot.data;
+
+            if (!isLoggedIn) {
+              // Show login card for guests
+              return _buildGuestView(context);
+            }
+
+            // Show full profile for logged-in users
+            return _buildAuthenticatedView(context, user!);
+          },
+        ),
+      ),
+    );
+  }
+
+  // Guest view - Show login card
+  Widget _buildGuestView(BuildContext context) {
+    return Center(
+      child: Padding(
+        padding: const EdgeInsets.symmetric(horizontal: 24),
+        child: Container(
+          padding: const EdgeInsets.all(32),
+          decoration: BoxDecoration(
+            color: Colors.white,
+            borderRadius: BorderRadius.circular(30),
+            boxShadow: [
+              BoxShadow(
+                color: Colors.black.withOpacity(0.1),
+                blurRadius: 20,
+                offset: const Offset(0, 10),
+              ),
+            ],
+          ),
           child: Column(
+            mainAxisSize: MainAxisSize.min,
             children: [
-              // ---------------------------
-              // TOP CURVED GRADIENT CARD
-              // ---------------------------
-              Stack(
-                clipBehavior: Clip.none,
-                alignment: Alignment.center,
-                children: [
-                  Container(
-                    height: 150,
-                    width: double.infinity,
-                    decoration: const BoxDecoration(
-                      gradient: LinearGradient(
-                        colors: [Color(0xFF8A5CF6), Color(0xFFC78BFA)],
-                        begin: Alignment.topLeft,
-                        end: Alignment.bottomRight,
-                      ),
-                      borderRadius: BorderRadius.only(
-                        bottomLeft: Radius.circular(30),
-                        bottomRight: Radius.circular(30),
-                      ),
+              Container(
+                width: 100,
+                height: 100,
+                decoration: BoxDecoration(
+                  gradient: const LinearGradient(
+                    colors: [Color(0xFF8A5CF6), Color(0xFFC78BFA)],
+                    begin: Alignment.topLeft,
+                    end: Alignment.bottomRight,
+                  ),
+                  shape: BoxShape.circle,
+                ),
+                child: const Icon(
+                  Icons.person_outline,
+                  size: 50,
+                  color: Colors.white,
+                ),
+              ),
+              const SizedBox(height: 24),
+              const Text(
+                "Welcome to AniVault!",
+                style: TextStyle(
+                  fontSize: 24,
+                  fontWeight: FontWeight.bold,
+                  color: Colors.black87,
+                ),
+              ),
+              const SizedBox(height: 12),
+              const Text(
+                "Login to track your anime, save your progress, and sync across devices.",
+                textAlign: TextAlign.center,
+                style: TextStyle(
+                  fontSize: 14,
+                  color: Colors.black54,
+                  height: 1.5,
+                ),
+              ),
+              const SizedBox(height: 32),
+              SizedBox(
+                width: double.infinity,
+                child: ElevatedButton(
+                  onPressed: () {
+                    Navigator.push(
+                      context,
+                      MaterialPageRoute(builder: (_) => const LoginScreen()),
+                    );
+                  },
+                  style: ElevatedButton.styleFrom(
+                    backgroundColor: const Color(0xFF8A5CF6),
+                    padding: const EdgeInsets.symmetric(vertical: 16),
+                    shape: RoundedRectangleBorder(
+                      borderRadius: BorderRadius.circular(50),
+                    ),
+                    elevation: 2,
+                  ),
+                  child: const Text(
+                    "Login / Sign Up",
+                    style: TextStyle(
+                      fontSize: 16,
+                      fontWeight: FontWeight.bold,
+                      color: Colors.white,
                     ),
                   ),
+                ),
+              ),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
 
-                  // Avatar
-                  Positioned(
-                    bottom: -60,
-                    child: Container(
+  // Authenticated view - Show full profile
+  Widget _buildAuthenticatedView(BuildContext context, User user) {
+    return SingleChildScrollView(
+      child: Column(
+        children: [
+          // ---------------------------
+          // TOP CURVED GRADIENT CARD
+          // ---------------------------
+          Stack(
+            clipBehavior: Clip.none,
+            alignment: Alignment.center,
+            children: [
+              Container(
+                height: 150,
+                width: double.infinity,
+                decoration: const BoxDecoration(
+                  gradient: LinearGradient(
+                    colors: [Color(0xFF8A5CF6), Color(0xFFC78BFA)],
+                    begin: Alignment.topLeft,
+                    end: Alignment.bottomRight,
+                  ),
+                  borderRadius: BorderRadius.only(
+                    bottomLeft: Radius.circular(30),
+                    bottomRight: Radius.circular(30),
+                  ),
+                ),
+              ),
+
+              // Avatar
+              Positioned(
+                bottom: -60,
+                child: StreamBuilder<DocumentSnapshot>(
+                  stream: FirebaseFirestore.instance
+                      .collection('users')
+                      .doc(user.uid)
+                      .snapshots(),
+                  builder: (context, snapshot) {
+                    String? selectedAvatar;
+                    if (snapshot.hasData && snapshot.data!.exists) {
+                      final data =
+                          snapshot.data!.data() as Map<String, dynamic>?;
+                      selectedAvatar = data?['selectedAvatar'];
+                    }
+
+                    return Container(
                       decoration: BoxDecoration(
                         shape: BoxShape.circle,
                         border: Border.all(color: Colors.white, width: 4),
@@ -61,32 +200,83 @@ class ProfileScreen extends StatelessWidget {
                           ),
                         ],
                       ),
-                      child: const CircleAvatar(
+                      child: CircleAvatar(
                         radius: 60,
-                        backgroundImage: AssetImage("assets/avatar.png"),
+                        backgroundImage: selectedAvatar != null
+                            ? AssetImage(selectedAvatar) as ImageProvider
+                            : (user.photoURL != null
+                                  ? NetworkImage(user.photoURL!)
+                                  : const AssetImage("assets/avatar.png")
+                                        as ImageProvider),
                       ),
-                    ),
-                  ),
-                ],
+                    );
+                  },
+                ),
               ),
+            ],
+          ),
 
-              const SizedBox(height: 65), // Space for protruding avatar
+          const SizedBox(height: 65), // Space for protruding avatar
 
-              const Text(
-                "User Name",
-                style: TextStyle(
+          StreamBuilder<DocumentSnapshot>(
+            stream: FirebaseFirestore.instance
+                .collection('users')
+                .doc(user.uid)
+                .snapshots(),
+            builder: (context, snapshot) {
+              String displayName = user.displayName ?? "User Name";
+
+              if (snapshot.hasData && snapshot.data!.exists) {
+                final data = snapshot.data!.data() as Map<String, dynamic>?;
+                displayName = data?['username'] ?? displayName;
+              }
+
+              return Text(
+                displayName,
+                style: const TextStyle(
                   fontSize: 24,
                   fontWeight: FontWeight.w800,
                   color: Colors.black87,
                 ),
-              ),
+              );
+            },
+          ),
 
-              const SizedBox(height: 10),
+          const SizedBox(height: 10),
 
-              // ---------------------------
-              // STATS OVERVIEW
-              // ---------------------------
-              Padding(
+          // ---------------------------
+          // STATS OVERVIEW
+          // ---------------------------
+          StreamBuilder<QuerySnapshot>(
+            stream: FirebaseFirestore.instance
+                .collection('users')
+                .doc(user.uid)
+                .collection('anime')
+                .snapshots(),
+            builder: (context, snapshot) {
+              int completedCount = 0;
+              double totalHours = 0;
+
+              if (snapshot.hasData && snapshot.data!.docs.isNotEmpty) {
+                for (var doc in snapshot.data!.docs) {
+                  final data = doc.data() as Map<String, dynamic>;
+                  final status = data['status'] ?? '';
+
+                  // Count completed anime
+                  if (status == 'Completed') {
+                    completedCount++;
+                  }
+
+                  // Calculate hours watched - only for Watching and Completed
+                  if (status == 'Watching' || status == 'Completed') {
+                    final progress = data['progress'] ?? 0;
+                    // Assuming average episode is 24 minutes
+                    totalHours += (progress * 24) / 60;
+                  }
+                }
+              }
+
+              return Padding(
                 padding: const EdgeInsets.symmetric(
                   horizontal: 35,
                 ), // Smaller card width
@@ -106,76 +296,74 @@ class ProfileScreen extends StatelessWidget {
                   child: Row(
                     mainAxisAlignment: MainAxisAlignment.spaceEvenly,
                     children: [
-                      _buildStatItem("86.5", "Hours"),
-                      _buildStatItem("340", "Completed"),
-                      _buildStatItem("5", "Reviews"),
+                      _buildStatItem(totalHours.toStringAsFixed(1), "Hours"),
+                      _buildStatItem(completedCount.toString(), "Completed"),
+                      _buildStatItem("0", "Reviews"),
                     ],
                   ),
                 ),
-              ),
-
-              const SizedBox(height: 23),
-
-              // ---------------------------
-              // SETTINGS LIST
-              // ---------------------------
-              Padding(
-                padding: const EdgeInsets.symmetric(
-                  horizontal: 15,
-                ), // Wider card
-                child: Container(
-                  padding: const EdgeInsets.fromLTRB(20, 20, 20, 20),
-                  decoration: BoxDecoration(
-                    color: Colors.white,
-                    borderRadius: BorderRadius.circular(20),
-                    boxShadow: [
-                      BoxShadow(
-                        color: Colors.black12.withOpacity(0.05),
-                        blurRadius: 10,
-                        offset: const Offset(0, 5),
-                      ),
-                    ],
-                  ),
-                  child: Column(
-                    children: [
-                      _buildSettingsTile(
-                        Icons.edit,
-                        "Edit Profile",
-                        context,
-                        false,
-                      ),
-                      const SizedBox(height: 20),
-                      _buildSettingsTile(
-                        Icons.palette,
-                        "Customize Avatar",
-                        context,
-                        false,
-                      ),
-                      const SizedBox(height: 20),
-                      _buildSettingsTile(
-                        Icons.dark_mode,
-                        "Change Theme",
-                        context,
-                        false,
-                      ),
-                      const SizedBox(height: 20),
-                      _buildSettingsTile(
-                        Icons.settings,
-                        "Account Settings",
-                        context,
-                        false,
-                      ),
-                      const SizedBox(height: 20),
-                      _buildSettingsTile(Icons.logout, "Logout", context, true),
-                    ],
-                  ),
-                ),
-              ),
-
-              const SizedBox(height: 35), // Same space as above the card
-            ],
+              );
+            },
           ),
-        ),
+
+          const SizedBox(height: 23),
+
+          // ---------------------------
+          // SETTINGS LIST
+          // ---------------------------
+          Padding(
+            padding: const EdgeInsets.symmetric(horizontal: 15), // Wider card
+            child: Container(
+              padding: const EdgeInsets.fromLTRB(20, 20, 20, 20),
+              decoration: BoxDecoration(
+                color: Colors.white,
+                borderRadius: BorderRadius.circular(20),
+                boxShadow: [
+                  BoxShadow(
+                    color: Colors.black12.withOpacity(0.05),
+                    blurRadius: 10,
+                    offset: const Offset(0, 5),
+                  ),
+                ],
+              ),
+              child: Column(
+                children: [
+                  _buildSettingsTile(
+                    Icons.edit,
+                    "Edit Profile",
+                    context,
+                    false,
+                  ),
+                  const SizedBox(height: 20),
+                  _buildSettingsTile(
+                    Icons.palette,
+                    "Customize Avatar",
+                    context,
+                    false,
+                  ),
+                  const SizedBox(height: 20),
+                  _buildSettingsTile(
+                    Icons.dark_mode,
+                    "Change Theme",
+                    context,
+                    false,
+                  ),
+                  const SizedBox(height: 20),
+                  _buildSettingsTile(
+                    Icons.settings,
+                    "Account Settings",
+                    context,
+                    false,
+                  ),
+                  const SizedBox(height: 20),
+                  _buildSettingsTile(Icons.logout, "Logout", context, true),
+                ],
+              ),
+            ),
+          ),
+
+          const SizedBox(height: 35), // Same space as above the card
+        ],
       ),
     );
   }
@@ -217,12 +405,103 @@ class ProfileScreen extends StatelessWidget {
     bool isDestructive,
   ) {
     return _ScaleButton(
-      onTap: () {
+      onTap: () async {
         if (title == "Logout") {
-          Navigator.push(
-            context,
-            MaterialPageRoute(builder: (context) => const LoginScreen()),
+          // Show confirmation dialog
+          final shouldLogout = await showDialog<bool>(
+            context: context,
+            builder: (context) => AlertDialog(
+              title: const Text('Logout'),
+              content: const Text('Are you sure you want to logout?'),
+              actions: [
+                TextButton(
+                  onPressed: () => Navigator.pop(context, false),
+                  child: const Text('Cancel'),
+                ),
+                TextButton(
+                  onPressed: () => Navigator.pop(context, true),
+                  style: TextButton.styleFrom(foregroundColor: Colors.red),
+                  child: const Text('Logout'),
+                ),
+              ],
+            ),
           );
+
+          if (shouldLogout == true && context.mounted) {
+            try {
+              final auth = FirebaseAuth.instance;
+              final googleSignIn = GoogleSignIn();
+
+              // Clear image cache
+              await CachedNetworkImage.evictFromCache('');
+
+              // Clear search history
+              final prefs = await SharedPreferences.getInstance();
+              await prefs.remove('search_history');
+
+              // Sign out from Google if signed in
+              if (await googleSignIn.isSignedIn()) {
+                await googleSignIn.signOut();
+              }
+
+              // Sign out from Firebase
+              await auth.signOut();
+
+              // Show success message
+              // The StreamBuilder will automatically update to show guest view
+              if (context.mounted) {
+                ScaffoldMessenger.of(context).showSnackBar(
+                  const SnackBar(
+                    content: Text('Logged out successfully'),
+                    backgroundColor: Colors.green,
+                    duration: Duration(seconds: 2),
+                  ),
+                );
+              }
+            } catch (e) {
+              if (context.mounted) {
+                ScaffoldMessenger.of(context).showSnackBar(
+                  SnackBar(content: Text('Error logging out: $e')),
+                );
+              }
+            }
+          }
+        } else if (title == "Edit Profile") {
+          // Show edit profile bottom sheet
+          final result = await showModalBottomSheet(
+            context: context,
+            isScrollControlled: true,
+            backgroundColor: Colors.transparent,
+            builder: (_) => const EditProfileBottomSheet(),
+          );
+
+          // Show success message if profile was updated
+          if (result != null && context.mounted) {
+            ScaffoldMessenger.of(context).showSnackBar(
+              const SnackBar(
+                content: Text('Profile updated successfully!'),
+                backgroundColor: Colors.green,
+              ),
+            );
+          }
+        } else if (title == "Customize Avatar") {
+          // Show avatar picker bottom sheet
+          final result = await showModalBottomSheet(
+            context: context,
+            isScrollControlled: true,
+            backgroundColor: Colors.transparent,
+            builder: (_) => const AvatarPickerBottomSheet(),
+          );
+
+          // Show success message if avatar was updated
+          if (result != null && context.mounted) {
+            ScaffoldMessenger.of(context).showSnackBar(
+              const SnackBar(
+                content: Text('Avatar updated successfully!'),
+                backgroundColor: Colors.green,
+              ),
+            );
+          }
         } else {
           ScaffoldMessenger.of(
             context,

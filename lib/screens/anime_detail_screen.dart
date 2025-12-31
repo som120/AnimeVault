@@ -11,6 +11,8 @@ import 'package:ainme_vault/screens/search_screen.dart';
 import 'package:ainme_vault/utils/light_skeleton.dart';
 import 'package:connectivity_plus/connectivity_plus.dart';
 import 'package:ainme_vault/widgets/anime_entry_bottom_sheet.dart';
+import 'package:firebase_auth/firebase_auth.dart';
+import 'package:cloud_firestore/cloud_firestore.dart';
 
 class AnimeDetailScreen extends StatefulWidget {
   final Map<String, dynamic> anime;
@@ -36,6 +38,7 @@ class _AnimeDetailScreenState extends State<AnimeDetailScreen>
   Timer? _countdownTimer;
   StreamSubscription<List<ConnectivityResult>>? _connectivitySubscription;
   bool _isSubscribedToEpisode = false;
+  bool _isInUserList = false; // Track if anime is in user's list
 
   @override
   void initState() {
@@ -67,6 +70,7 @@ class _AnimeDetailScreenState extends State<AnimeDetailScreen>
     });
 
     _fetchAnimeDetails();
+    _checkIfAnimeInList(); // Check if anime is already in user's list
 
     // Listen to scroll
     _scrollController.addListener(_handleScroll);
@@ -79,6 +83,34 @@ class _AnimeDetailScreenState extends State<AnimeDetailScreen>
   void _updateConnectionStatus(List<ConnectivityResult> result) {
     if (!result.contains(ConnectivityResult.none) && hasError) {
       _fetchAnimeDetails();
+    }
+  }
+
+  Future<void> _checkIfAnimeInList() async {
+    final user = FirebaseAuth.instance.currentUser;
+    if (user == null) {
+      setState(() => _isInUserList = false);
+      return;
+    }
+
+    try {
+      final animeId = widget.anime['id']?.toString();
+      if (animeId == null) return;
+
+      final doc = await FirebaseFirestore.instance
+          .collection('users')
+          .doc(user.uid)
+          .collection('anime')
+          .doc(animeId)
+          .get();
+
+      if (mounted) {
+        setState(() {
+          _isInUserList = doc.exists;
+        });
+      }
+    } catch (e) {
+      debugPrint('Error checking if anime is in list: $e');
     }
   }
 
@@ -397,7 +429,9 @@ class _AnimeDetailScreenState extends State<AnimeDetailScreen>
                               width: 50,
                               height: 50,
                               decoration: BoxDecoration(
-                                color: AppTheme.primary,
+                                color: _isInUserList
+                                    ? Colors.green
+                                    : AppTheme.primary,
                                 shape: BoxShape.circle,
                                 boxShadow: const [
                                   BoxShadow(
@@ -410,8 +444,28 @@ class _AnimeDetailScreenState extends State<AnimeDetailScreen>
                               child: Material(
                                 color: Colors.transparent,
                                 child: InkWell(
-                                  onTap: () {
-                                    showModalBottomSheet(
+                                  onTap: () async {
+                                    // Check if user is logged in
+                                    final user =
+                                        FirebaseAuth.instance.currentUser;
+                                    if (user == null) {
+                                      // User not logged in - show message
+                                      ScaffoldMessenger.of(
+                                        context,
+                                      ).showSnackBar(
+                                        const SnackBar(
+                                          content: Text(
+                                            'Please login to add anime to your list',
+                                          ),
+                                          backgroundColor: Colors.redAccent,
+                                          behavior: SnackBarBehavior.floating,
+                                        ),
+                                      );
+                                      return;
+                                    }
+
+                                    // User is logged in - show bottom sheet
+                                    await showModalBottomSheet(
                                       context: context,
                                       isScrollControlled: true,
                                       backgroundColor: Colors.transparent,
@@ -420,10 +474,13 @@ class _AnimeDetailScreenState extends State<AnimeDetailScreen>
                                             anime: widget.anime,
                                           ),
                                     );
+
+                                    // Refresh the button state after bottom sheet closes
+                                    _checkIfAnimeInList();
                                   },
                                   borderRadius: BorderRadius.circular(20),
-                                  child: const Icon(
-                                    Icons.add,
+                                  child: Icon(
+                                    _isInUserList ? Icons.check : Icons.add,
                                     color: Colors.white,
                                     size: 27,
                                   ),

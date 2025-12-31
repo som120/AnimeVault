@@ -6,6 +6,7 @@ import 'package:cached_network_image/cached_network_image.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:flutter/material.dart';
 import 'package:shimmer/shimmer.dart';
+import 'package:firebase_auth/firebase_auth.dart';
 
 class HomeScreen extends StatefulWidget {
   const HomeScreen({super.key});
@@ -21,6 +22,7 @@ class _HomeScreenState extends State<HomeScreen> {
   bool _isLoading = true;
   bool _isDark(Color c) => c.computeLuminance() < 0.5;
   String _selectedStatus = 'Completed';
+  bool _isGridView = false; // Track view mode
 
   Timer? _timer;
   static const double _cardHorizontalMargin = 24.0;
@@ -172,148 +174,159 @@ class _HomeScreenState extends State<HomeScreen> {
 
           // 2. Content Layer
           SafeArea(
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                const SizedBox(height: 20),
-                // Greeting
-                ValueListenableBuilder<Color>(
-                  valueListenable: _bgColorNotifier,
-                  builder: (_, bgColor, __) {
-                    final textColor = _isDark(bgColor)
-                        ? Colors.white
-                        : Colors.black87;
+            child: SingleChildScrollView(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  const SizedBox(height: 20),
+                  // Greeting
+                  ValueListenableBuilder<Color>(
+                    valueListenable: _bgColorNotifier,
+                    builder: (_, bgColor, __) {
+                      final textColor = _isDark(bgColor)
+                          ? Colors.white
+                          : Colors.black87;
 
-                    return RepaintBoundary(
-                      child: GreetingSection(textColor: textColor),
-                    );
-                  },
-                ),
-
-                const SizedBox(height: 30),
-
-                // Carousel
-                if (_isLoading)
-                  _buildLoadingShimmer()
-                else if (_airingAnimeList.isEmpty)
-                  const Center(child: Text("No airing anime found"))
-                else
-                  Column(
-                    children: [
-                      SizedBox(
-                        height: 220,
-                        child: NotificationListener<ScrollNotification>(
-                          onNotification: (notification) {
-                            if (notification is ScrollStartNotification) {
-                              _timer?.cancel();
-                            } else if (notification is ScrollEndNotification) {
-                              _startAutoScroll();
-                            }
-                            return false; // allow notification to bubble
-                          },
-                          child: PageView.builder(
-                            controller: _pageController,
-                            itemCount: _airingAnimeList.length,
-                            onPageChanged: (index) {
-                              _pageIndexNotifier.value = index;
-                              _bgColorNotifier.value = _getProcessedColor(
-                                index,
-                              );
-                            },
-                            itemBuilder: (context, index) {
-                              final anime = _airingAnimeList[index];
-                              return _buildAnimeCard(anime);
-                            },
-                          ),
-                        ),
-                      ),
-
-                      const SizedBox(height: 16),
-                      // Indicators
-                      ValueListenableBuilder<int>(
-                        valueListenable: _pageIndexNotifier,
-                        builder: (_, current, __) {
-                          return Row(
-                            mainAxisAlignment: MainAxisAlignment.center,
-                            children: List.generate(_airingAnimeList.length, (
-                              index,
-                            ) {
-                              return AnimatedContainer(
-                                duration: const Duration(milliseconds: 300),
-                                margin: const EdgeInsets.symmetric(
-                                  horizontal: 4,
-                                ),
-                                height: 8,
-                                width: current == index ? 24 : 8,
-                                decoration: BoxDecoration(
-                                  color: current == index
-                                      ? AppTheme.primary
-                                      : AppTheme.accent.withOpacity(0.5),
-                                  borderRadius: BorderRadius.circular(4),
-                                ),
-                              );
-                            }),
-                          );
-                        },
-                      ),
-                    ],
+                      return RepaintBoundary(
+                        child: GreetingSection(textColor: textColor),
+                      );
+                    },
                   ),
-                const SizedBox(height: 20),
-                Padding(
-                  padding: const EdgeInsets.symmetric(horizontal: 24.0),
-                  child: Row(
-                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                    children: [
-                      const Text(
-                        "My List",
-                        style: TextStyle(
-                          fontSize: 24,
-                          fontWeight: FontWeight.bold,
+
+                  const SizedBox(height: 30),
+
+                  // Carousel
+                  if (_isLoading)
+                    _buildLoadingShimmer()
+                  else if (_airingAnimeList.isEmpty)
+                    const Center(child: Text("No airing anime found"))
+                  else
+                    Column(
+                      children: [
+                        SizedBox(
+                          height: 220,
+                          child: NotificationListener<ScrollNotification>(
+                            onNotification: (notification) {
+                              if (notification is ScrollStartNotification) {
+                                _timer?.cancel();
+                              } else if (notification
+                                  is ScrollEndNotification) {
+                                _startAutoScroll();
+                              }
+                              return false; // allow notification to bubble
+                            },
+                            child: PageView.builder(
+                              controller: _pageController,
+                              itemCount: _airingAnimeList.length,
+                              onPageChanged: (index) {
+                                _pageIndexNotifier.value = index;
+                                _bgColorNotifier.value = _getProcessedColor(
+                                  index,
+                                );
+                              },
+                              itemBuilder: (context, index) {
+                                final anime = _airingAnimeList[index];
+                                return _buildAnimeCard(anime);
+                              },
+                            ),
+                          ),
                         ),
-                      ),
-                      Row(
+
+                        const SizedBox(height: 16),
+                        // Indicators
+                        ValueListenableBuilder<int>(
+                          valueListenable: _pageIndexNotifier,
+                          builder: (_, current, __) {
+                            return Row(
+                              mainAxisAlignment: MainAxisAlignment.center,
+                              children: List.generate(_airingAnimeList.length, (
+                                index,
+                              ) {
+                                return AnimatedContainer(
+                                  duration: const Duration(milliseconds: 300),
+                                  margin: const EdgeInsets.symmetric(
+                                    horizontal: 4,
+                                  ),
+                                  height: 8,
+                                  width: current == index ? 24 : 8,
+                                  decoration: BoxDecoration(
+                                    color: current == index
+                                        ? AppTheme.primary
+                                        : AppTheme.accent.withOpacity(0.5),
+                                    borderRadius: BorderRadius.circular(4),
+                                  ),
+                                );
+                              }),
+                            );
+                          },
+                        ),
+                      ],
+                    ),
+                  const SizedBox(height: 20),
+                  Padding(
+                    padding: const EdgeInsets.symmetric(horizontal: 24.0),
+                    child: Row(
+                      mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                      children: [
+                        const Text(
+                          "My List",
+                          style: TextStyle(
+                            fontSize: 24,
+                            fontWeight: FontWeight.bold,
+                          ),
+                        ),
+                        Row(
+                          children: [
+                            IconButton(
+                              icon: Icon(
+                                _isGridView
+                                    ? Icons.view_list_rounded
+                                    : Icons.grid_view_rounded,
+                              ),
+                              style: IconButton.styleFrom(
+                                foregroundColor: AppTheme.primary,
+                              ),
+                              onPressed: () {
+                                setState(() {
+                                  _isGridView = !_isGridView;
+                                });
+                              },
+                            ),
+                            IconButton(
+                              icon: const Icon(Icons.filter_list_rounded),
+                              style: IconButton.styleFrom(
+                                foregroundColor: AppTheme.primary,
+                              ),
+                              onPressed: () {
+                                // TODO: open filter bottom sheet
+                              },
+                            ),
+                          ],
+                        ),
+                      ],
+                    ),
+                  ),
+                  Padding(
+                    padding: const EdgeInsets.symmetric(vertical: 16),
+                    child: SingleChildScrollView(
+                      scrollDirection: Axis.horizontal,
+                      padding: const EdgeInsets.symmetric(horizontal: 24.0),
+                      child: Row(
                         children: [
-                          IconButton(
-                            icon: const Icon(Icons.grid_view_rounded),
-                            style: IconButton.styleFrom(
-                              foregroundColor: AppTheme.primary,
-                            ),
-                            onPressed: () {
-                              // TODO: grid view toggle
-                            },
-                          ),
-                          IconButton(
-                            icon: const Icon(Icons.filter_list_rounded),
-                            style: IconButton.styleFrom(
-                              foregroundColor: AppTheme.primary,
-                            ),
-                            onPressed: () {
-                              // TODO: open filter bottom sheet
-                            },
-                          ),
+                          _statusChip("Completed"),
+                          const SizedBox(width: 12),
+                          _statusChip("Planning"),
+                          const SizedBox(width: 12),
+                          _statusChip("Watching"),
                         ],
                       ),
-                    ],
+                    ),
                   ),
-                ),
-                Padding(
-                  padding: const EdgeInsets.symmetric(
-                    horizontal: 24.0,
-                    vertical: 16,
-                  ),
-                  child: Row(
-                    children: [
-                      _statusChip("Completed"),
-                      const SizedBox(width: 12),
-                      _statusChip("Planning"),
-                      const SizedBox(width: 12),
-                      _statusChip("Watching"),
-                    ],
-                  ),
-                ),
 
-                Expanded(child: MyAnimeList(status: _selectedStatus)),
-              ],
+                  MyAnimeList(status: _selectedStatus, isGridView: _isGridView),
+                  const SizedBox(height: 100), // Bottom padding for nav bar
+                ],
+              ),
             ),
           ),
         ],
@@ -488,13 +501,38 @@ class _HomeScreenState extends State<HomeScreen> {
 
 class MyAnimeList extends StatelessWidget {
   final String status;
+  final bool isGridView;
 
-  const MyAnimeList({super.key, required this.status});
+  const MyAnimeList({super.key, required this.status, this.isGridView = false});
 
   @override
   Widget build(BuildContext context) {
+    final user = FirebaseAuth.instance.currentUser;
+
+    if (user == null) {
+      return Center(
+        child: Column(
+          mainAxisAlignment: MainAxisAlignment.center,
+          children: [
+            const Icon(Icons.lock_outline, size: 48, color: Colors.grey),
+            const SizedBox(height: 16),
+            const Text(
+              "Login to track your anime",
+              style: TextStyle(
+                color: Colors.grey,
+                fontSize: 16,
+                fontWeight: FontWeight.w500,
+              ),
+            ),
+          ],
+        ),
+      );
+    }
+
     return StreamBuilder<QuerySnapshot>(
       stream: FirebaseFirestore.instance
+          .collection('users')
+          .doc(user.uid)
           .collection('anime')
           .where('status', isEqualTo: status)
           .snapshots(),
@@ -514,7 +552,164 @@ class MyAnimeList extends StatelessWidget {
 
         final animeList = snapshot.data!.docs;
 
+        // Grid View
+        if (isGridView) {
+          return GridView.builder(
+            shrinkWrap: true,
+            physics: const NeverScrollableScrollPhysics(),
+            padding: const EdgeInsets.symmetric(horizontal: 16),
+            gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
+              crossAxisCount: 2,
+              childAspectRatio: 0.65,
+              crossAxisSpacing: 12,
+              mainAxisSpacing: 12,
+            ),
+            itemCount: animeList.length,
+            itemBuilder: (context, index) {
+              final doc = animeList[index];
+              final data = doc.data() as Map<String, dynamic>;
+
+              final title = data['title'] ?? 'Unknown';
+              final rating = data['averageScore'] != null
+                  ? (data['averageScore'] / 10).toStringAsFixed(1)
+                  : '?';
+              final progress = data['progress'] ?? 0;
+              final totalEpisodes = data['totalEpisodes'] ?? '?';
+
+              // Reconstruct anime object from Firestore data
+              final anime = {
+                'id': data['id'],
+                'title': {'english': data['title'], 'romaji': data['title']},
+                'coverImage': {'large': data['coverImage']},
+                'averageScore': data['averageScore'],
+                'episodes': data['totalEpisodes'],
+              };
+
+              return GestureDetector(
+                onTap: () {
+                  Navigator.push(
+                    context,
+                    MaterialPageRoute(
+                      builder: (context) => AnimeDetailScreen(anime: anime),
+                    ),
+                  );
+                },
+                child: Container(
+                  decoration: BoxDecoration(
+                    color: Colors.white,
+                    borderRadius: BorderRadius.circular(16),
+                    boxShadow: [
+                      BoxShadow(
+                        color: Colors.black.withOpacity(0.08),
+                        blurRadius: 12,
+                        offset: const Offset(0, 4),
+                      ),
+                    ],
+                  ),
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      // Poster
+                      Expanded(
+                        child: Stack(
+                          children: [
+                            ClipRRect(
+                              borderRadius: const BorderRadius.only(
+                                topLeft: Radius.circular(16),
+                                topRight: Radius.circular(16),
+                              ),
+                              child: data['coverImage'] != null
+                                  ? CachedNetworkImage(
+                                      imageUrl: data['coverImage'],
+                                      width: double.infinity,
+                                      height: double.infinity,
+                                      fit: BoxFit.cover,
+                                      errorWidget: (context, url, error) =>
+                                          Container(
+                                            color: Colors.grey[300],
+                                            child: const Icon(Icons.error),
+                                          ),
+                                    )
+                                  : Container(
+                                      color: Colors.grey[300],
+                                      child: const Icon(Icons.image),
+                                    ),
+                            ),
+                            // Rating badge
+                            Positioned(
+                              top: 8,
+                              right: 8,
+                              child: Container(
+                                padding: const EdgeInsets.symmetric(
+                                  horizontal: 6,
+                                  vertical: 4,
+                                ),
+                                decoration: BoxDecoration(
+                                  color: Colors.black.withOpacity(0.7),
+                                  borderRadius: BorderRadius.circular(8),
+                                ),
+                                child: Row(
+                                  mainAxisSize: MainAxisSize.min,
+                                  children: [
+                                    const Icon(
+                                      Icons.star_rounded,
+                                      size: 14,
+                                      color: Colors.amber,
+                                    ),
+                                    const SizedBox(width: 2),
+                                    Text(
+                                      rating,
+                                      style: const TextStyle(
+                                        color: Colors.white,
+                                        fontSize: 12,
+                                        fontWeight: FontWeight.bold,
+                                      ),
+                                    ),
+                                  ],
+                                ),
+                              ),
+                            ),
+                          ],
+                        ),
+                      ),
+                      // Info
+                      Padding(
+                        padding: const EdgeInsets.all(8.0),
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            Text(
+                              title,
+                              style: const TextStyle(
+                                fontWeight: FontWeight.bold,
+                                fontSize: 13,
+                              ),
+                              maxLines: 2,
+                              overflow: TextOverflow.ellipsis,
+                            ),
+                            const SizedBox(height: 4),
+                            Text(
+                              "Ep: $progress / $totalEpisodes",
+                              style: TextStyle(
+                                fontSize: 12,
+                                color: Colors.grey[600],
+                              ),
+                            ),
+                          ],
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+              );
+            },
+          );
+        }
+
+        // List View
         return ListView.builder(
+          shrinkWrap: true,
+          physics: const NeverScrollableScrollPhysics(),
           padding: const EdgeInsets.symmetric(horizontal: 16),
           itemCount: animeList.length,
           itemBuilder: (context, index) {
@@ -522,8 +717,20 @@ class MyAnimeList extends StatelessWidget {
             final data = doc.data() as Map<String, dynamic>;
 
             final title = data['title'] ?? 'Unknown';
-            final genre = data['genre'] ?? 'Unknown';
-            final rating = data['rating']?.toString() ?? '?';
+            final rating = data['averageScore'] != null
+                ? (data['averageScore'] / 10).toStringAsFixed(1)
+                : '?';
+            final progress = data['progress'] ?? 0;
+            final totalEpisodes = data['totalEpisodes'] ?? '?';
+
+            // Reconstruct anime object from Firestore data
+            final anime = {
+              'id': data['id'],
+              'title': {'english': data['title'], 'romaji': data['title']},
+              'coverImage': {'large': data['coverImage']},
+              'averageScore': data['averageScore'],
+              'episodes': data['totalEpisodes'],
+            };
 
             return Container(
               margin: const EdgeInsets.symmetric(vertical: 8),
@@ -539,12 +746,66 @@ class MyAnimeList extends StatelessWidget {
                 ],
               ),
               child: ListTile(
+                onTap: () {
+                  Navigator.push(
+                    context,
+                    MaterialPageRoute(
+                      builder: (context) => AnimeDetailScreen(anime: anime),
+                    ),
+                  );
+                },
+                contentPadding: const EdgeInsets.symmetric(
+                  horizontal: 16,
+                  vertical: 8,
+                ),
+                leading: ClipRRect(
+                  borderRadius: BorderRadius.circular(8),
+                  child: data['coverImage'] != null
+                      ? CachedNetworkImage(
+                          imageUrl: data['coverImage'],
+                          width: 50,
+                          height: 70,
+                          fit: BoxFit.cover,
+                          errorWidget: (context, url, error) =>
+                              const Icon(Icons.error),
+                        )
+                      : Container(width: 50, height: 70, color: Colors.grey),
+                ),
                 title: Text(
                   title,
                   style: const TextStyle(fontWeight: FontWeight.bold),
+                  maxLines: 2,
+                  overflow: TextOverflow.ellipsis,
                 ),
-                subtitle: Text(genre),
-                trailing: Text("⭐ $rating"),
+                subtitle: Text("Ep: $progress / $totalEpisodes"),
+                trailing: Container(
+                  padding: const EdgeInsets.symmetric(
+                    horizontal: 8,
+                    vertical: 4,
+                  ),
+                  decoration: BoxDecoration(
+                    color: Colors.amber.withOpacity(0.2),
+                    borderRadius: BorderRadius.circular(12),
+                  ),
+                  child: Row(
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      const Icon(
+                        Icons.star_rounded,
+                        size: 16,
+                        color: Colors.amber,
+                      ),
+                      const SizedBox(width: 4),
+                      Text(
+                        "$rating",
+                        style: const TextStyle(
+                          fontWeight: FontWeight.bold,
+                          color: Colors.amber,
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
               ),
             );
           },
@@ -559,32 +820,84 @@ class GreetingSection extends StatelessWidget {
 
   const GreetingSection({super.key, required this.textColor});
 
+  String _getGreeting() {
+    final hour = DateTime.now().hour;
+    if (hour < 12) return "Good Morning";
+    if (hour < 17) return "Good Afternoon";
+    return "Good Evening";
+  }
+
   @override
   Widget build(BuildContext context) {
-    return Padding(
-      padding: const EdgeInsets.symmetric(horizontal: 24.0),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Text(
-            "Good Morning",
-            style: TextStyle(
-              color: textColor,
-              fontSize: 16,
-              fontWeight: FontWeight.w500,
+    final user = FirebaseAuth.instance.currentUser;
+
+    if (user == null) {
+      return Padding(
+        padding: const EdgeInsets.symmetric(horizontal: 24.0),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Text(
+              _getGreeting(),
+              style: TextStyle(
+                color: textColor,
+                fontSize: 16,
+                fontWeight: FontWeight.w500,
+              ),
             ),
-          ),
-          const SizedBox(height: 4),
-          Text(
-            "Anime Fan",
-            style: TextStyle(
-              color: textColor,
-              fontSize: 24,
-              fontWeight: FontWeight.bold,
+            const SizedBox(height: 4),
+            Text(
+              "Anime Fan",
+              style: TextStyle(
+                color: textColor,
+                fontSize: 24,
+                fontWeight: FontWeight.bold,
+              ),
             ),
+          ],
+        ),
+      );
+    }
+
+    return StreamBuilder<DocumentSnapshot>(
+      stream: FirebaseFirestore.instance
+          .collection('users')
+          .doc(user.uid)
+          .snapshots(),
+      builder: (context, snapshot) {
+        String displayName = user.displayName ?? "Anime Fan";
+
+        if (snapshot.hasData && snapshot.data!.exists) {
+          final data = snapshot.data!.data() as Map<String, dynamic>?;
+          displayName = data?['username'] ?? displayName;
+        }
+
+        return Padding(
+          padding: const EdgeInsets.symmetric(horizontal: 24.0),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Text(
+                _getGreeting(),
+                style: TextStyle(
+                  color: textColor,
+                  fontSize: 16,
+                  fontWeight: FontWeight.w500,
+                ),
+              ),
+              const SizedBox(height: 4),
+              Text(
+                displayName,
+                style: TextStyle(
+                  color: textColor,
+                  fontSize: 24,
+                  fontWeight: FontWeight.bold,
+                ),
+              ),
+            ],
           ),
-        ],
-      ),
+        );
+      },
     );
   }
 }
