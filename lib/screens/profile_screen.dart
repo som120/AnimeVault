@@ -7,6 +7,7 @@ import 'package:cached_network_image/cached_network_image.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:ainme_vault/widgets/avatar_picker_bottom_sheet.dart';
 import 'package:ainme_vault/widgets/edit_profile_bottom_sheet.dart';
+import 'package:shared_preferences/shared_preferences.dart';
 import '../main.dart'; // import to access MainScreen
 
 class ProfileScreen extends StatelessWidget {
@@ -246,32 +247,63 @@ class ProfileScreen extends StatelessWidget {
           // ---------------------------
           // STATS OVERVIEW
           // ---------------------------
-          Padding(
-            padding: const EdgeInsets.symmetric(
-              horizontal: 35,
-            ), // Smaller card width
-            child: Container(
-              padding: const EdgeInsets.symmetric(vertical: 12),
-              decoration: BoxDecoration(
-                color: Colors.white,
-                borderRadius: BorderRadius.circular(20),
-                boxShadow: [
-                  BoxShadow(
-                    color: Colors.black12.withOpacity(0.05),
-                    blurRadius: 10,
-                    offset: const Offset(0, 5),
+          StreamBuilder<QuerySnapshot>(
+            stream: FirebaseFirestore.instance
+                .collection('users')
+                .doc(user.uid)
+                .collection('anime')
+                .snapshots(),
+            builder: (context, snapshot) {
+              int completedCount = 0;
+              double totalHours = 0;
+
+              if (snapshot.hasData && snapshot.data!.docs.isNotEmpty) {
+                for (var doc in snapshot.data!.docs) {
+                  final data = doc.data() as Map<String, dynamic>;
+                  final status = data['status'] ?? '';
+
+                  // Count completed anime
+                  if (status == 'Completed') {
+                    completedCount++;
+                  }
+
+                  // Calculate hours watched - only for Watching and Completed
+                  if (status == 'Watching' || status == 'Completed') {
+                    final progress = data['progress'] ?? 0;
+                    // Assuming average episode is 24 minutes
+                    totalHours += (progress * 24) / 60;
+                  }
+                }
+              }
+
+              return Padding(
+                padding: const EdgeInsets.symmetric(
+                  horizontal: 35,
+                ), // Smaller card width
+                child: Container(
+                  padding: const EdgeInsets.symmetric(vertical: 12),
+                  decoration: BoxDecoration(
+                    color: Colors.white,
+                    borderRadius: BorderRadius.circular(20),
+                    boxShadow: [
+                      BoxShadow(
+                        color: Colors.black12.withOpacity(0.05),
+                        blurRadius: 10,
+                        offset: const Offset(0, 5),
+                      ),
+                    ],
                   ),
-                ],
-              ),
-              child: Row(
-                mainAxisAlignment: MainAxisAlignment.spaceEvenly,
-                children: [
-                  _buildStatItem("86.5", "Hours"),
-                  _buildStatItem("340", "Completed"),
-                  _buildStatItem("5", "Reviews"),
-                ],
-              ),
-            ),
+                  child: Row(
+                    mainAxisAlignment: MainAxisAlignment.spaceEvenly,
+                    children: [
+                      _buildStatItem(totalHours.toStringAsFixed(1), "Hours"),
+                      _buildStatItem(completedCount.toString(), "Completed"),
+                      _buildStatItem("0", "Reviews"),
+                    ],
+                  ),
+                ),
+              );
+            },
           ),
 
           const SizedBox(height: 23),
@@ -402,6 +434,10 @@ class ProfileScreen extends StatelessWidget {
 
               // Clear image cache
               await CachedNetworkImage.evictFromCache('');
+
+              // Clear search history
+              final prefs = await SharedPreferences.getInstance();
+              await prefs.remove('search_history');
 
               // Sign out from Google if signed in
               if (await googleSignIn.isSignedIn()) {
