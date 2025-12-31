@@ -4,6 +4,9 @@ import 'package:ainme_vault/screens/login_screen.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:google_sign_in/google_sign_in.dart';
 import 'package:cached_network_image/cached_network_image.dart';
+import 'package:cloud_firestore/cloud_firestore.dart';
+import 'package:ainme_vault/widgets/avatar_picker_bottom_sheet.dart';
+import 'package:ainme_vault/widgets/edit_profile_bottom_sheet.dart';
 import '../main.dart'; // import to access MainScreen
 
 class ProfileScreen extends StatelessWidget {
@@ -171,25 +174,42 @@ class ProfileScreen extends StatelessWidget {
               // Avatar
               Positioned(
                 bottom: -60,
-                child: Container(
-                  decoration: BoxDecoration(
-                    shape: BoxShape.circle,
-                    border: Border.all(color: Colors.white, width: 4),
-                    boxShadow: [
-                      BoxShadow(
-                        color: Colors.black.withOpacity(0.1),
-                        blurRadius: 10,
-                        offset: const Offset(0, 5),
+                child: StreamBuilder<DocumentSnapshot>(
+                  stream: FirebaseFirestore.instance
+                      .collection('users')
+                      .doc(user.uid)
+                      .snapshots(),
+                  builder: (context, snapshot) {
+                    String? selectedAvatar;
+                    if (snapshot.hasData && snapshot.data!.exists) {
+                      final data =
+                          snapshot.data!.data() as Map<String, dynamic>?;
+                      selectedAvatar = data?['selectedAvatar'];
+                    }
+
+                    return Container(
+                      decoration: BoxDecoration(
+                        shape: BoxShape.circle,
+                        border: Border.all(color: Colors.white, width: 4),
+                        boxShadow: [
+                          BoxShadow(
+                            color: Colors.black.withOpacity(0.1),
+                            blurRadius: 10,
+                            offset: const Offset(0, 5),
+                          ),
+                        ],
                       ),
-                    ],
-                  ),
-                  child: CircleAvatar(
-                    radius: 60,
-                    backgroundImage: user.photoURL != null
-                        ? NetworkImage(user.photoURL!)
-                        : const AssetImage("assets/avatar.png")
-                              as ImageProvider,
-                  ),
+                      child: CircleAvatar(
+                        radius: 60,
+                        backgroundImage: selectedAvatar != null
+                            ? AssetImage(selectedAvatar) as ImageProvider
+                            : (user.photoURL != null
+                                  ? NetworkImage(user.photoURL!)
+                                  : const AssetImage("assets/avatar.png")
+                                        as ImageProvider),
+                      ),
+                    );
+                  },
                 ),
               ),
             ],
@@ -197,13 +217,28 @@ class ProfileScreen extends StatelessWidget {
 
           const SizedBox(height: 65), // Space for protruding avatar
 
-          Text(
-            user.displayName ?? "User Name",
-            style: const TextStyle(
-              fontSize: 24,
-              fontWeight: FontWeight.w800,
-              color: Colors.black87,
-            ),
+          StreamBuilder<DocumentSnapshot>(
+            stream: FirebaseFirestore.instance
+                .collection('users')
+                .doc(user.uid)
+                .snapshots(),
+            builder: (context, snapshot) {
+              String displayName = user.displayName ?? "User Name";
+
+              if (snapshot.hasData && snapshot.data!.exists) {
+                final data = snapshot.data!.data() as Map<String, dynamic>?;
+                displayName = data?['username'] ?? displayName;
+              }
+
+              return Text(
+                displayName,
+                style: const TextStyle(
+                  fontSize: 24,
+                  fontWeight: FontWeight.w800,
+                  color: Colors.black87,
+                ),
+              );
+            },
           ),
 
           const SizedBox(height: 10),
@@ -394,6 +429,42 @@ class ProfileScreen extends StatelessWidget {
                 );
               }
             }
+          }
+        } else if (title == "Edit Profile") {
+          // Show edit profile bottom sheet
+          final result = await showModalBottomSheet(
+            context: context,
+            isScrollControlled: true,
+            backgroundColor: Colors.transparent,
+            builder: (_) => const EditProfileBottomSheet(),
+          );
+
+          // Show success message if profile was updated
+          if (result != null && context.mounted) {
+            ScaffoldMessenger.of(context).showSnackBar(
+              const SnackBar(
+                content: Text('Profile updated successfully!'),
+                backgroundColor: Colors.green,
+              ),
+            );
+          }
+        } else if (title == "Customize Avatar") {
+          // Show avatar picker bottom sheet
+          final result = await showModalBottomSheet(
+            context: context,
+            isScrollControlled: true,
+            backgroundColor: Colors.transparent,
+            builder: (_) => const AvatarPickerBottomSheet(),
+          );
+
+          // Show success message if avatar was updated
+          if (result != null && context.mounted) {
+            ScaffoldMessenger.of(context).showSnackBar(
+              const SnackBar(
+                content: Text('Avatar updated successfully!'),
+                backgroundColor: Colors.green,
+              ),
+            );
           }
         } else {
           ScaffoldMessenger.of(
