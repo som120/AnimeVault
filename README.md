@@ -1,6 +1,6 @@
-# 📦 AnimeVault — Flutter Anime Tracking App
+# 📦 AniFlux — Flutter Anime Tracking App
 
-AnimeVault is a modern Flutter application inspired by MyAnimeList and AniList.  
+AniFlux is a modern **Flutter-based anime tracking application** inspired by **MyAnimeList** and **AniList**.  
 It allows users to **search, browse, and track anime**, with **cloud sync using Firebase** and **live data from the AniList GraphQL API**.
 
 ---
@@ -8,10 +8,10 @@ It allows users to **search, browse, and track anime**, with **cloud sync using 
 ## 🚀 Features
 
 ### 🔍 Anime Search
-
-- Search any anime using AniList API
-- Modern, clean UI with poster, rating, and year
-- Fast filtering with:
+- Search anime using **AniList GraphQL API**
+- Clean and modern UI
+- Displays poster, rating, release year
+- Fast filters:
   - Top 100
   - Popular
   - Airing
@@ -19,41 +19,37 @@ It allows users to **search, browse, and track anime**, with **cloud sync using 
   - Movies
 
 ### 🎨 Modern UI
-
-- Custom-designed anime cards
-- Beautiful rounded corners and soft shadows
-- Clean white backgrounds
+- Custom anime cards
+- Rounded corners & soft shadows
 - Smooth animations
-- Responsive iOS/Android design
+- Clean white theme
+- Fully responsive for **Android & iOS**
 
 ### ⭐ Anime Details
-
 - High-quality cover image
-- Description
+- Description & synopsis
 - Genres
-- Rating
-- Episodes
-- Link to AniList page
+- Rating & episode count
+- Direct link to AniList page
 
 ### ☁️ Firebase Integration
-
 - Firebase Core configured
 - Firestore database connected
 - Store user watchlist & progress
-- Real-time cloud sync (coming soon)
+- Real-time cloud sync *(coming soon)*
 
 ---
 
 ## 🏗️ Tech Stack
 
-| Technology                        | Purpose                   |
-| --------------------------------- | ------------------------- |
-| **Flutter 3**                     | UI & App Development      |
-| **Dart**                          | Main Programming Language |
-| **AniList GraphQL API**           | Anime Data Source         |
-| **Firebase Core**                 | Backend Integration       |
-| **Firebase Firestore**            | User Data Storage         |
-| **Firebase Auth** _(coming soon)_ | User Login                |
+| Technology | Purpose |
+|-----------|--------|
+| **Flutter 3** | Cross-platform UI |
+| **Dart** | Programming language |
+| **AniList GraphQL API** | Anime data source |
+| **Firebase Core** | Backend services |
+| **Cloud Firestore** | User data storage |
+| **Firebase Auth** *(coming soon)* | Authentication |
 
 ---
 
@@ -64,68 +60,83 @@ lib/
 │ ├── search_screen.dart
 │ ├── anime_detail_screen.dart
 │ ├── home_screen.dart
-│ ├── profile_screen.dart
+│ └── profile_screen.dart
 │
 ├── services/
-│ ├── anilist_service.dart
+│ └── anilist_service.dart
 │
 ├── firebase_options.dart
-├── main.dart
+└── main.dart
 
 ---
 
 ## 🔧 Setup Instructions
 
-### 1️⃣ Install dependencies
+### 1️⃣ Clone the repository
+```bash
+git clone https://github.com/<your-username>/AniFlux.git
+cd AniFlux
 
 flutter pub get
 
-### 2️⃣ Configure Firebase (if needed)
-
 flutterfire configure
-
-### 3️⃣ Run the app
 
 flutter run
 
+```
 ---
 
-## 🌐 API Used
-
-### AniList GraphQL API
-
-Documentation: https://anilist.gitbook.io/anilist-apiv2-docs/
+🌐 API Used
+AniList GraphQL API
 
 ---
+## 📖 Documentation:
+https://anilist.gitbook.io/anilist-apiv2-docs/
 
-## 🛠️ Planned Features
+🛠️ Planned Features
 
-- 🔐 Google Sign-in (Firebase Auth)
-- ⭐ User ratings
-- ❤️ Favorite list
-- 📌 Watchlist system (Watching / Completed / Dropped)
-- 📊 User statistics
-- 🌙 Dark mode
-- 🔄 Offline mode
-- 🎴 Seasonal anime page
-- ↕ Scroll animations & hero effects
+🔐 Google Sign-In (Firebase Auth)
+
+⭐ User ratings
+
+❤️ Favorites list
+
+📌 Watchlist system (Watching / Completed / Dropped)
+
+📊 User statistics
+
+🌙 Dark mode
+
+🔄 Offline support
+
+🎴 Seasonal anime page
+
+✨ Hero animations & advanced transitions
 
 ---
-
 ## 🤝 Contributing
 
-Pull requests are welcome!  
-For major changes, open an issue first to discuss your proposal.
+Contributions are welcome!
+Please open an issue first to discuss major changes.
+
+Steps:
+
+Fork the repository
+
+Create a new branch
+
+Commit your changes
+
+Open a pull request
 
 ---
-
 ## 📜 License
 
-MIT License — use freely for learning & development.
+MIT License — free to use for learning and development.
 
 ---
-
 ## 💙 Author
 
-**Somnath**  
+Somnath
 Flutter Developer & Anime Enthusiast
+
