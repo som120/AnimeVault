@@ -1,4 +1,4 @@
-package com.example.anivault
+package com.aniflux.app
 
 import io.flutter.embedding.android.FlutterActivity
 
