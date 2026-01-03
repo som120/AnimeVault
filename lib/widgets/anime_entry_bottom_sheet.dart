@@ -1,3 +1,4 @@
+import 'package:ainme_vault/services/anilist_service.dart';
 import 'package:ainme_vault/theme/app_theme.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
@@ -24,13 +25,15 @@ class _AnimeEntryBottomSheetState extends State<AnimeEntryBottomSheet> {
   late bool _isNewEntry;
   bool get _episodesUnknown => widget.anime['episodes'] == null;
 
+  bool _episodesLoading = true;
+
   final List<String> _statuses = ["Watching", "Completed", "Planning"];
 
   @override
   void initState() {
     super.initState();
-    _totalEpisodes = widget.anime['episodes'] ?? 0;
     _isNewEntry = true;
+    _loadEpisodes();
     _checkForExistingEntry();
   }
 
@@ -65,6 +68,41 @@ class _AnimeEntryBottomSheetState extends State<AnimeEntryBottomSheet> {
       }
     } catch (e) {
       debugPrint("Error checking anime entry: $e");
+    }
+  }
+
+  Future<void> _loadEpisodes() async {
+    final episodes = widget.anime['episodes'];
+
+    // Episodes already available
+    if (episodes != null && episodes > 0) {
+      setState(() {
+        _totalEpisodes = episodes;
+        _episodesLoading = false;
+      });
+      return;
+    }
+
+    try {
+      // Fetch full anime details
+      final fullAnime = await AniListService.getAnimeDetails(
+        widget.anime['id'],
+      );
+      if (!mounted) return;
+
+      setState(() {
+        _totalEpisodes = fullAnime?['episodes'] ?? 0;
+        _episodesLoading = false;
+      });
+    } catch (e) {
+      if (!mounted) return;
+
+      setState(() {
+        _totalEpisodes = 0;
+        _episodesLoading = false;
+      });
+
+      debugPrint("Episode fetch failed: $e");
     }
   }
 
@@ -166,7 +204,7 @@ class _AnimeEntryBottomSheetState extends State<AnimeEntryBottomSheet> {
                   ).textTheme.titleLarge?.copyWith(fontSize: 18),
                 ),
                 TextButton(
-                  onPressed: (_isNewEntry || _hasChanges)
+                  onPressed: (!_episodesLoading && (_isNewEntry || _hasChanges))
                       ? () async {
                           HapticFeedback.lightImpact();
                           await _saveEntry();
@@ -261,13 +299,18 @@ class _AnimeEntryBottomSheetState extends State<AnimeEntryBottomSheet> {
                     mainAxisAlignment: MainAxisAlignment.spaceBetween,
                     children: [
                       _buildSectionTitle("Episode Progress"),
-                      Text(
-                        "$_progress / ${_totalEpisodes > 0 ? _totalEpisodes : '?'}",
-                        style: TextStyle(
-                          color: Colors.grey.shade600,
-                          fontWeight: FontWeight.w500,
-                        ),
-                      ),
+                      _episodesLoading
+                          ? const Text(
+                              "Loading...",
+                              style: TextStyle(color: Colors.grey),
+                            )
+                          : Text(
+                              "$_progress / $_totalEpisodes",
+                              style: TextStyle(
+                                color: Colors.grey.shade600,
+                                fontWeight: FontWeight.w500,
+                              ),
+                            ),
                     ],
                   ),
                   if (_episodesUnknown)
@@ -285,65 +328,71 @@ class _AnimeEntryBottomSheetState extends State<AnimeEntryBottomSheet> {
 
                   SizedBox(
                     height: 50,
-                    child: ListView.builder(
-                      scrollDirection: Axis.horizontal,
-                      itemCount: maxEps + 1,
-                      controller: ScrollController(
-                        initialScrollOffset:
-                            _progress *
-                                54.0 - // 50 (width) + 4 (horizontal margin)
-                            (MediaQuery.of(context).size.width / 2) +
-                            25, // Half of item width
-                      ),
-                      itemBuilder: (context, index) {
-                        final isSelected = index == _progress;
-                        return GestureDetector(
-                          onTap: () {
-                            setState(() {
-                              _progress = index;
-                              _hasChanges = true;
-                              // Auto-update status logic
-                              if (_progress == _totalEpisodes &&
-                                  _totalEpisodes > 0) {
-                                _status = "Completed";
-                              } else if (_progress > 0) {
-                                _status = "Watching";
-                              }
-                            });
-                          },
-                          child: AnimatedContainer(
-                            duration: const Duration(milliseconds: 200),
-                            width: 50,
-                            margin: const EdgeInsets.symmetric(horizontal: 4),
-                            decoration: BoxDecoration(
-                              color: isSelected
-                                  ? Colors.transparent
-                                  : Colors.transparent,
-                              borderRadius: BorderRadius.circular(12),
-                              border: isSelected
-                                  ? Border.all(
-                                      color: AppTheme.primary,
-                                      width: 2,
-                                    )
-                                  : null,
+                    child: _episodesLoading
+                        ? const Center(
+                            child: SizedBox(
+                              width: 22,
+                              height: 22,
+                              child: CircularProgressIndicator(strokeWidth: 2),
                             ),
-                            alignment: Alignment.center,
-                            child: Text(
-                              "$index",
-                              style: TextStyle(
-                                fontSize: isSelected ? 20 : 16,
-                                fontWeight: isSelected
-                                    ? FontWeight.bold
-                                    : FontWeight.normal,
-                                color: isSelected
-                                    ? AppTheme.primary
-                                    : Colors.grey.shade400,
-                              ),
+                          )
+                        : ListView.builder(
+                            scrollDirection: Axis.horizontal,
+                            itemCount: maxEps + 1,
+                            controller: ScrollController(
+                              initialScrollOffset:
+                                  _progress * 54.0 -
+                                  (MediaQuery.of(context).size.width / 2) +
+                                  25,
                             ),
+                            itemBuilder: (context, index) {
+                              final isSelected = index == _progress;
+                              return GestureDetector(
+                                onTap: () {
+                                  setState(() {
+                                    _progress = index;
+                                    _hasChanges = true;
+
+                                    if (_progress == _totalEpisodes &&
+                                        _totalEpisodes > 0) {
+                                      _status = "Completed";
+                                    } else if (_progress > 0) {
+                                      _status = "Watching";
+                                    }
+                                  });
+                                },
+                                child: AnimatedContainer(
+                                  duration: const Duration(milliseconds: 200),
+                                  width: 50,
+                                  margin: const EdgeInsets.symmetric(
+                                    horizontal: 4,
+                                  ),
+                                  decoration: BoxDecoration(
+                                    borderRadius: BorderRadius.circular(12),
+                                    border: isSelected
+                                        ? Border.all(
+                                            color: AppTheme.primary,
+                                            width: 2,
+                                          )
+                                        : null,
+                                  ),
+                                  alignment: Alignment.center,
+                                  child: Text(
+                                    "$index",
+                                    style: TextStyle(
+                                      fontSize: isSelected ? 20 : 16,
+                                      fontWeight: isSelected
+                                          ? FontWeight.bold
+                                          : FontWeight.normal,
+                                      color: isSelected
+                                          ? AppTheme.primary
+                                          : Colors.grey.shade400,
+                                    ),
+                                  ),
+                                ),
+                              );
+                            },
                           ),
-                        );
-                      },
-                    ),
                   ),
 
                   const SizedBox(height: 20),

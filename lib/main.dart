@@ -34,7 +34,7 @@ class AnimeVaultApp extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return MaterialApp(
-      title: 'AniVault',
+      title: 'AniFlux',
       theme: AppTheme.lightTheme,
       home: const MainScreen(),
     );
@@ -71,10 +71,10 @@ class _MainScreenState extends State<MainScreen> with WidgetsBindingObserver {
         type: MaterialType.transparency,
         child: InkWell(
           borderRadius: BorderRadius.circular(30),
-          onTap: () async {
+          onTap: () {
             setState(() => _currentIndex = index);
-            await _prefs.setInt('last_tab', index);
           },
+
           child: AnimatedContainer(
             duration: const Duration(milliseconds: 250),
             padding: const EdgeInsets.symmetric(horizontal: 34, vertical: 8),
@@ -115,14 +115,29 @@ class _MainScreenState extends State<MainScreen> with WidgetsBindingObserver {
   void initState() {
     super.initState();
     WidgetsBinding.instance.addObserver(this);
-    _loadLastTab();
+    _initPrefs();
   }
 
-  Future<void> _loadLastTab() async {
+  Future<void> _initPrefs() async {
     _prefs = await SharedPreferences.getInstance();
+
+    // ❗ Always start from Home on cold start
     setState(() {
-      _currentIndex = _prefs.getInt('last_tab') ?? 0;
+      _currentIndex = 0;
     });
+  }
+
+  @override
+  void didChangeAppLifecycleState(AppLifecycleState state) {
+    if (state == AppLifecycleState.paused) {
+      // App sent to background → save last tab
+      _prefs.setInt('last_tab', _currentIndex);
+    }
+
+    if (state == AppLifecycleState.resumed) {
+      // Force rebuild so BackdropFilter reapplies blur
+      setState(() {});
+    }
   }
 
   Future<bool> _handleBackPress() async {
@@ -156,14 +171,6 @@ class _MainScreenState extends State<MainScreen> with WidgetsBindingObserver {
     // Second back press within 2 seconds → EXIT
     await SystemNavigator.pop();
     return false;
-  }
-
-  @override
-  void didChangeAppLifecycleState(AppLifecycleState state) {
-    if (state == AppLifecycleState.resumed) {
-      // Force rebuild so BackdropFilter reapplies blur
-      setState(() {});
-    }
   }
 
   @override
