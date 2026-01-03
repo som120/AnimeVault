@@ -78,29 +78,36 @@ class _HomeScreenState extends State<HomeScreen> {
   }
 
   // ---------------- DATA FETCHING ----------------
-  Future<void> _fetchAiringAnime() async {
+  Future<void> _fetchAiringAnime({bool retry = true}) async {
     try {
       final data = await AniListService.getAiringAnime();
-      if (mounted) {
-        setState(() {
-          // Take top 5
-          _airingAnimeList = data.take(5).toList();
-          _isLoading = false;
 
-          // Set initial color if available
-          if (_airingAnimeList.isNotEmpty) {
-            _bgColorNotifier.value = _getProcessedColor(0);
-            _pageIndexNotifier.value = 0;
-            _startAutoScroll();
-          }
-        });
-      }
+      if (!mounted) return;
+
+      setState(() {
+        _airingAnimeList = data.take(5).toList();
+        _isLoading = false;
+
+        if (_airingAnimeList.isNotEmpty) {
+          _bgColorNotifier.value = _getProcessedColor(0);
+          _pageIndexNotifier.value = 0;
+          _startAutoScroll();
+        }
+      });
     } catch (e) {
-      if (mounted) {
-        setState(() {
-          _isLoading = false;
-        });
+      if (!mounted) return;
+
+      // 🔁 retry once after short delay
+      if (retry) {
+        await Future.delayed(const Duration(seconds: 1));
+        return _fetchAiringAnime(retry: false);
       }
+
+      setState(() {
+        _isLoading = false;
+        _airingAnimeList = [];
+      });
+
       debugPrint("Error fetching airing anime: $e");
     }
   }
